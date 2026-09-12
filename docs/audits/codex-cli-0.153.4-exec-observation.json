@@ -1,0 +1,71 @@
+{
+  "cli_version": "codex-cli 0.153.4",
+  "mode": "exec",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "endpoint": "loopback HTTP, dummy provider key",
+  "user_config_loaded": false,
+  "returncode": 0,
+  "received_ok": true,
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/v1/responses",
+      "http_version": "HTTP/1.1",
+      "headers": {
+        "accept": "text/event-stream",
+        "content-type": "application/json",
+        "originator": "codex_exec",
+        "user-agent": "codex_exec/0.153.4 (Mac OS 26.6.2; arm64) iTerm.app/3.4.22 (codex_exec; 0.153.4)"
+      },
+      "header_names": [
+        "accept",
+        "authorization",
+        "content-length",
+        "content-type",
+        "host",
+        "originator",
+        "session-id",
+        "thread-id",
+        "user-agent",
+        "x-client-request-id",
+        "x-codex-beta-features",
+        "x-codex-turn-metadata",
+        "x-codex-window-id",
+        "x-openai-internal-codex-responses-lite"
+      ],
+      "body_bytes": 90917,
+      "body": {
+        "top_level_keys": [
+          "client_metadata",
+          "include",
+          "input",
+          "model",
+          "parallel_tool_calls",
+          "prompt_cache_key",
+          "reasoning",
+          "store",
+          "stream",
+          "text",
+          "tool_choice"
+        ],
+        "instructions_type": "NoneType",
+        "instructions_length": null,
+        "instructions_contains_sub2api": null,
+        "tool_types": [],
+        "input_item_types": ["additional_tools", "message"],
+        "input_message_roles": ["developer", "user"],
+        "client_metadata_keys": [
+          "root_turn_id",
+          "session_id",
+          "thread_id",
+          "turn_id",
+          "x-codex-installation-id",
+          "x-codex-turn-metadata",
+          "x-codex-window-id"
+        ],
+        "stream": true,
+        "store": false
+      }
+    }
+  ]
+}

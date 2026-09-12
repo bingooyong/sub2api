@@ -179,6 +179,7 @@ func (s *OpenAIGatewayService) buildOpenAIWSHeaders(
 	if account != nil && account.UsesOpenAICodexProtocol() {
 		enforceCodexIdentityHeadersWithUA(headers, s.codexIdentityOverrideUA(account))
 	}
+	s.preserveCodexClientIdentityHeaders(c, account, headers)
 
 	// 账号级请求头覆写（仅 openai api_key 账号启用时生效；OAuth 路径 no-op）。
 	// 覆盖所有 WS 模式（ctx_pool/dedicated/passthrough）的握手头。

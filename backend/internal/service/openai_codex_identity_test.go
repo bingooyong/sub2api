@@ -277,6 +277,25 @@ func TestEnforceCodexIdentityHeaders_EnforcementDisabledThirdPartyFallback(t *te
 	require.Equal(t, codexCLIVersion, h.Get("version"))
 }
 
+func TestEnforceCodexIdentityHeaders_EnforcementDisabledCachedUserAgentPairing(t *testing.T) {
+	previous := codexIdentityEnforcement.Load()
+	SetCodexIdentityEnforcementEnabled(false)
+	t.Cleanup(func() { SetCodexIdentityEnforcementEnabled(previous) })
+
+	// Usage probes generate canonical headers, then may replace only the UA
+	// from their fingerprint cache. Their originator still needs legacy pairing.
+	headers := make(http.Header)
+	ensureCodexIdentityHeaders(headers)
+	cachedUA := "codex_vscode/0.153.4 (Mac OS 26.6.2; arm64) vscode"
+	headers.Set("User-Agent", cachedUA)
+
+	enforceCodexIdentityHeadersWithUA(headers, "")
+
+	require.Equal(t, cachedUA, headers.Get("User-Agent"))
+	require.Equal(t, "codex_vscode", headers.Get("Originator"))
+	require.Equal(t, CodexCanonicalClientVersion(), headers.Get("Version"))
+}
+
 // 收口必须幂等：透传等路径可能先后多次经过收口。
 func TestEnforceCodexIdentityHeadersIsIdempotent(t *testing.T) {
 	h := make(http.Header)

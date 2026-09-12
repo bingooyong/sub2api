@@ -8,7 +8,9 @@ import (
 	"sync/atomic"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"golang.org/x/net/http/httpguts"
 )
 
 // codexUpstreamMinVersion 上游 /backend-api/codex 接受的最低 version 头：
@@ -246,5 +248,31 @@ func pairCodexIdentityHeaders(h http.Header) {
 	h.Set("originator", originator)
 	if v := strings.TrimSpace(h.Get("version")); v != "" && CompareVersions(v, codexUpstreamMinVersion) < 0 {
 		h.Set("version", resolveCodexOutboundIdentity("").version)
+	}
+}
+
+// preserveCodexClientIdentityHeaders restores caller metadata on forwarded Codex
+// protocol requests when enforcement is disabled. API-key and synthetic requests
+// keep their existing policies. Run after legacy identity enforcement and before
+// account header overrides. Missing fields stay absent, including for unknown clients.
+func (s *OpenAIGatewayService) preserveCodexClientIdentityHeaders(c *gin.Context, account *Account, headers http.Header) {
+	if c == nil || c.Request == nil || headers == nil || account == nil || !account.UsesOpenAICodexProtocol() {
+		return
+	}
+	if codexIdentityEnforcement.Load() || account.GetOpenAIUserAgent() != "" {
+		return
+	}
+	if s != nil && s.cfg != nil && s.cfg.Gateway.ForceCodexCLI {
+		return
+	}
+	for _, name := range [...]string{"User-Agent", "Originator", "Version"} {
+		headers.Del(name)
+		for _, value := range c.Request.Header.Values(name) {
+			// Validate the original value before any trimming. Never turn malformed
+			// input into a plausible client identity by stripping control bytes.
+			if httpguts.ValidHeaderFieldValue(value) && !strings.ContainsAny(value, "\r\n") {
+				headers.Add(name, value)
+			}
+		}
 	}
 }

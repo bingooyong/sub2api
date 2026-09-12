@@ -141,6 +141,10 @@ docs/*
 !docs/COMPOSITE_GROUPS.md
 !docs/PLUGIN_DEVELOPMENT.md
 !docs/channel-monitor-v2-safe-defaults.md
+!docs/audits/
+docs/audits/*
+!docs/audits/codex-request-compatibility.md
+!docs/audits/codex-cli-0.153.4-exec-observation.json
 !docs/legal/
 !docs/legal/*.md
 !docs/screenshots/

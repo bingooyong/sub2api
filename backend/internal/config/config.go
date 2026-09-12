@@ -977,14 +977,14 @@ type GatewayConfig struct {
 	// ForceCodexCLI: 强制将 OpenAI `/v1/responses` 请求按 Codex CLI 处理。
 	// 用于网关未透传/改写 User-Agent 时的兼容兜底（默认关闭，避免影响其他客户端）。
 	ForceCodexCLI bool `mapstructure:"force_codex_cli"`
-	// DisableCodexIdentityEnforcement: 关闭「强制统一 Codex 出站身份」。上游 /backend-api/codex
-	// 在容量紧张时按客户端身份分优先级降载，被降载的请求会拿到 HTTP 200 + 流内
-	// server_is_overloaded，该次请求失败。默认强制统一出口：所有 OAuth 出站的
-	// User-Agent / originator / version 都改写为网关规范身份，确保没有请求带着第三方或陈旧身份
-	// 出站。置 true 后退回「仅按最终 User-Agent 配对 originator」的收口语义，供上游策略变动时回滚。
+	// DisableCodexIdentityEnforcement: 关闭 OAuth 转发请求的 Codex 身份强制改写。
+	// 默认 false 保留既有规范身份行为。置 true 后保留合法的客户端 User-Agent、
+	// originator 和 version，不因未识别的客户端名、旧版本或缺失字段而生成 Codex 身份。
+	// 账号级 User-Agent、ForceCodexCLI，以及合成探测/认证请求各自的身份配置仍然生效。
+	// 此开关不改变账号/API Key 的会话隔离或可选的指纹收敛设置。
 	//
 	// 取反义命名是为了让零值安全：该开关会发布为进程级快照，未经 viper 加载而手工构造的
-	// Config（测试、工具）其零值必须落在「强制统一开启」这一侧，否则会静默丢掉这层保护。
+	// Config（测试、工具）其零值保持既有的「强制统一开启」行为。
 	DisableCodexIdentityEnforcement bool `mapstructure:"disable_codex_identity_enforcement"`
 	// DisableCodexOriginatorNormalization: 已废弃，等价于 DisableCodexIdentityEnforcement。
 	// 保留以兼容既有配置文件；加载时会折叠进新键，不要在新代码里直接读取。

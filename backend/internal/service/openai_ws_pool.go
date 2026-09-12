@@ -84,6 +84,9 @@ type openAIWSAcquireRequest struct {
 
 type openAIWSHandshakeCompatibilityKey struct {
 	betaFeatures        string
+	userAgent           string
+	originator          string
+	version             string
 	codexInstallationID string
 	sessionIDHyphen     string
 	sessionIDUnderscore string
@@ -2305,6 +2308,13 @@ func normalizeOpenAIWSBetaFeatures(headers http.Header) string {
 func normalizeOpenAIWSHandshakeCompatibility(account *Account, headers http.Header) openAIWSHandshakeCompatibilityKey {
 	key := openAIWSHandshakeCompatibilityKey{
 		betaFeatures: normalizeOpenAIWSBetaFeatures(headers),
+	}
+	// A reused socket keeps its original handshake headers. Quoting all values
+	// preserves boundaries and distinguishes an absent field from an empty value.
+	if !codexIdentityEnforcement.Load() && account != nil && account.UsesOpenAICodexProtocol() {
+		key.userAgent = fmt.Sprintf("%q", headers.Values("User-Agent"))
+		key.originator = fmt.Sprintf("%q", headers.Values("Originator"))
+		key.version = fmt.Sprintf("%q", headers.Values("Version"))
 	}
 	mode := activeCodexFingerprintMode(account)
 	if mode == codexFingerprintOff {

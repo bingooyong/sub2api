@@ -259,16 +259,21 @@ gateway:
   #
   # 注意：开启后会影响所有客户端的行为（不仅限于 VS Code / Codex CLI），请谨慎开启。
   force_codex_cli: false
-  # Stop rewriting load-shed Codex originators to the official CLI identity.
-  # 关闭「把落在上游降载桶的 Codex originator 改写为官方 CLI 身份（codex_cli_rs）」。
+  # Preserve supplied client identity metadata on OAuth forwarding requests.
+  # 设为 true 时保留客户端提供的合法 User-Agent、originator 和 version。
   #
-  # 上游 /backend-api/codex 按 originator 分桶调度容量：命中降载桶的请求即使 HTTP 200，
-  # 也会立刻推 server_is_overloaded 错误事件，网关据此判定瞬时上游故障并冷却账号，
-  # 对外表现为 Codex 账号频繁过载不可用。归一化只替换身份段，保留版本/OS/架构/终端指纹，
-  # 改写后 originator 与 User-Agent 首段仍然配套。
+  # Missing Codex metadata stays absent; old versions are not raised automatically.
+  # 缺失字段不会自动补成 Codex 身份，旧版本不会被自动提升；上游仍可拒绝不支持的客户端。
+  # Explicit account User-Agent overrides and force_codex_cli remain independent.
+  # 账号级 User-Agent 和 force_codex_cli 仍是独立的显式覆盖设置。
+  # Session/account isolation and optional fingerprint convergence are unchanged.
+  # 此开关不改变会话/账号隔离与可选的指纹收敛设置。
   #
-  # 默认 false（即归一化开启）；仅当上游调整分桶、使归一化反而落入降载桶时才置 true。
-  disable_codex_originator_normalization: false
+  # Default false retains legacy canonical identity enforcement.
+  # 默认 false 保持既有身份强制改写行为。
+  # Legacy alias: disable_codex_originator_normalization (true also opts out).
+  # 兼容旧键 disable_codex_originator_normalization，旧键为 true 时同样关闭强制改写。
+  disable_codex_identity_enforcement: false
   # Enable Codex image-generation bridge injection for /openai/v1/responses.
   # 是否为 Codex /responses 请求自动注入 image_generation 工具与桥接指令。
   #

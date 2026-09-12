@@ -3,6 +3,7 @@
 package service
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -159,6 +160,28 @@ func TestFilterCodexInput_NormalizesCrossTurnLegacyCallReference(t *testing.T) {
 	filtered := filterCodexInputWithOptions(input, codexInputFilterOptions{PreserveReferences: true})
 
 	require.Equal(t, "fc_previous_turn", filtered[0].(map[string]any)["id"])
+}
+
+func TestFilterCodexInput_PreservesCrossTurnCallReferencesWhenRequested(t *testing.T) {
+	boundaryID := "call_" + strings.Repeat("x", 59)
+	input := []any{
+		map[string]any{"type": "item_reference", "id": "call_previous_turn"},
+		map[string]any{"type": "item_reference", "id": boundaryID},
+		map[string]any{"type": "item_reference", "id": "ctc_remote_item"},
+	}
+
+	filtered := filterCodexInputWithOptions(input, codexInputFilterOptions{
+		PreserveReferences: true,
+		PreserveCallIDs:    true,
+	})
+
+	require.Len(t, filtered, 3)
+	for i, want := range []string{"call_previous_turn", boundaryID, "ctc_remote_item"} {
+		item, ok := filtered[i].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, "item_reference", item["type"])
+		require.Equal(t, want, item["id"])
+	}
 }
 
 func TestFilterCodexInput_PreservesNativeRemoteItemReferences(t *testing.T) {

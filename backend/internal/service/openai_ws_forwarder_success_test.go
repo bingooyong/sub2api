@@ -804,7 +804,7 @@ func TestOpenAIGatewayService_Forward_WSv2_OAuthStoreFalseByDefault(t *testing.T
 	require.Equal(t, isolateOpenAIUpstreamSessionID(0, account, "conv-oauth-1"), captureDialer.lastHeaders.Get("conversation_id"))
 }
 
-func TestOpenAIGatewayService_Forward_WSv2_OAuthSanitizesInvalidNativeToolItemID(t *testing.T) {
+func TestOpenAIGatewayService_Forward_WSv2_OAuthSanitizesItemIDAndPreservesCallID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	rec := httptest.NewRecorder()
@@ -866,9 +866,10 @@ func TestOpenAIGatewayService_Forward_WSv2_OAuthSanitizesInvalidNativeToolItemID
 	requestJSON := requestToJSONString(requestPayload)
 	require.Equal(t, "response.create", gjson.Get(requestJSON, "type").String())
 	require.False(t, gjson.Get(requestJSON, "input.0.id").Exists(), "stale fc_* ID must not be replayed as a native custom_tool_call ID")
-	require.Equal(t, "ctc_hotfix", gjson.Get(requestJSON, "input.0.call_id").String())
+	// The opaque call ID correlates the call and output independently of item-ID validation.
+	require.Equal(t, "fc_hotfix", gjson.Get(requestJSON, "input.0.call_id").String())
 	require.Equal(t, "custom_tool_call_output", gjson.Get(requestJSON, "input.1.type").String())
-	require.Equal(t, "ctc_hotfix", gjson.Get(requestJSON, "input.1.call_id").String())
+	require.Equal(t, "fc_hotfix", gjson.Get(requestJSON, "input.1.call_id").String())
 }
 
 func TestOpenAIGatewayService_Forward_WSv2_OAuthOriginatorCompatibility(t *testing.T) {

@@ -1655,9 +1655,9 @@ func filterCodexInputWithOptions(input []any, opts codexInputFilterOptions) []an
 					if normalizedID, mapped := referenceIDMappings[trimmedID]; mapped {
 						newItem["id"] = normalizedID
 					} else if _, hasSameTurnCall := inputCallIDs[trimmedID]; !hasSameTurnCall {
-						// A bare call_* reference is a legacy function-call identifier.
-						// Normalize it even when its call item lives in an earlier turn.
-						newItem["id"] = normalizeCodexCallID(trimmedID)
+						// References to earlier turns follow the same preservation
+						// and length rules as their function-call identifiers.
+						newItem["id"] = normalizeCodexFilterCallID("function_call", trimmedID, opts.PreserveCallIDs)
 					}
 				}
 			}

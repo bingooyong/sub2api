@@ -635,6 +635,80 @@ func activeCodexFingerprintPoolAccountForTest(id int64) *Account {
 	}
 }
 
+func TestOpenAIWSConnPool_IdentityOptOutRespectsHandshakeMetadata(t *testing.T) {
+	previous := codexIdentityEnforcement.Load()
+	SetCodexIdentityEnforcementEnabled(false)
+	t.Cleanup(func() { SetCodexIdentityEnforcementEnabled(previous) })
+
+	for _, tc := range []struct {
+		name   string
+		header string
+		before []string
+		after  []string
+	}{
+		{name: "user agent", header: "User-Agent", before: []string{"workbench/1.0"}, after: []string{"workbench/2.0"}},
+		{name: "originator", header: "Originator", before: []string{"workbench"}, after: []string{"other-workbench"}},
+		{name: "independent version", header: "Version", before: []string{"0.153.4"}, after: []string{"0.150.1"}},
+		{name: "missing version", header: "Version", before: []string{"0.153.4"}},
+		{name: "explicit empty version", header: "Version", after: []string{""}},
+		{name: "second user agent value", header: "User-Agent", before: []string{"workbench/1.0", "app/1.0"}, after: []string{"workbench/1.0", "app/2.0"}},
+		{name: "second originator value", header: "Originator", before: []string{"workbench", "app-one"}, after: []string{"workbench", "app-two"}},
+		{name: "second version value", header: "Version", before: []string{"0.153.4", "1.0"}, after: []string{"0.153.4", "2.0"}},
+		{name: "comma is not a value separator", header: "Originator", before: []string{"app,one", "two"}, after: []string{"app", "one,two"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &config.Config{}
+			cfg.Gateway.OpenAIWS.MaxConnsPerAccount = 2
+			cfg.Gateway.OpenAIWS.MinIdlePerAccount = 0
+			cfg.Gateway.OpenAIWS.MaxIdlePerAccount = 2
+			pool := newOpenAIWSConnPool(cfg)
+			t.Cleanup(pool.Close)
+			dialer := &openAIWSCountingDialer{}
+			pool.setClientDialerForTest(dialer)
+			headers := http.Header{
+				"User-Agent": {"workbench/1.0"},
+				"Originator": {"workbench"},
+				"Version":    {"0.153.4"},
+			}
+			if tc.before == nil {
+				headers.Del(tc.header)
+			} else {
+				headers[tc.header] = tc.before
+			}
+			req := openAIWSAcquireRequest{
+				Account: identityHeaderTestAccount(),
+				WSURL:   "wss://example.com/v1/responses",
+				Headers: headers,
+			}
+			first, err := pool.Acquire(context.Background(), req)
+			require.NoError(t, err)
+			firstID := first.ConnID()
+			first.Release()
+
+			changed := req
+			changed.Headers = headers.Clone()
+			if tc.after == nil {
+				changed.Headers.Del(tc.header)
+			} else {
+				changed.Headers[tc.header] = tc.after
+			}
+			second, err := pool.Acquire(context.Background(), changed)
+			require.NoError(t, err)
+			require.False(t, second.Reused(), "a handshake cannot represent different caller metadata")
+			require.NotEqual(t, firstID, second.ConnID())
+			secondID := second.ConnID()
+			second.Release()
+
+			reused, err := pool.Acquire(context.Background(), changed)
+			require.NoError(t, err)
+			require.True(t, reused.Reused())
+			require.Equal(t, secondID, reused.ConnID())
+			reused.Release()
+			require.Equal(t, 2, dialer.DialCount())
+		})
+	}
+}
+
 func stableOpenAIWSIdentityHeadersForTest() http.Header {
 	headers := make(http.Header)
 	headers.Set("X-Codex-Beta-Features", "remote_compaction_v2,responses_websockets_v2")
