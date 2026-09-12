@@ -9,6 +9,9 @@ changed client metadata, and native Responses tool-call normalization could merg
 distinct calls. The changes address those defects without rotating persisted
 identifiers or replacing client metadata with a captured identity.
 
+For a Chinese reference with filenames, source excerpts, and per-finding status,
+see [Sub2API 请求指纹与硬编码核查清单](sub2api-fingerprint-findings.zh-CN.md).
+
 ## Local CLI observation
 
 The installed `codex-cli 0.153.4` was run in `exec` mode on macOS 26.6.2 / arm64,

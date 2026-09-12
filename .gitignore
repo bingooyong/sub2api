@@ -145,6 +145,7 @@ docs/*
 docs/audits/*
 !docs/audits/codex-request-compatibility.md
 !docs/audits/codex-cli-0.153.4-exec-observation.json
+!docs/audits/sub2api-fingerprint-findings.zh-CN.md
 !docs/legal/
 !docs/legal/*.md
 !docs/screenshots/
