@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend quality check and applicable guideline index"}
+{"file": ".trellis/spec/backend/codex-forwarding.md", "reason": "Required regression assertions and preservation boundaries"}
+{"file": "docs/audits/codex-request-compatibility.md", "reason": "Sanitized observation, source evidence, and audited limitations"}

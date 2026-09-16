@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend conventions and applicable guide index"}
+{"file": ".trellis/spec/backend/codex-forwarding.md", "reason": "Forwarding metadata, WebSocket compatibility, and native call-ID contracts"}
