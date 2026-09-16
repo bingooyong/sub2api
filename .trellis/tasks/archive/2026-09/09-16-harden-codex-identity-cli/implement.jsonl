@@ -1,0 +1,2 @@
+{"file": ".trellis/spec/backend/codex-forwarding.md", "reason": "Identity precedence, opaque call IDs and connection reuse contracts"}
+{"file": "docs/audits/codex-request-compatibility.md", "reason": "Baseline behavior and loopback capture limitations"}

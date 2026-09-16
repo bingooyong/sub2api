@@ -1,0 +1,14 @@
+{
+  "cli_version": "codex-cli 0.153.4",
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "mode": "exec",
+  "endpoint": "loopback HTTP with dummy key",
+  "user_config_loaded": false,
+  "returncode": 0,
+  "received_ok": false,
+  "requests": [],
+  "limitations": [
+    "Custom-provider HTTP observation only; not OAuth, production TLS, HTTP/2, or native WS verification.",
+    "No authorization values, prompt contents, session identifiers or installation identifiers retained."
+  ]
+}
