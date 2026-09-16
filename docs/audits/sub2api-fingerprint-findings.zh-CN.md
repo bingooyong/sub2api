@@ -22,7 +22,7 @@
 | B3 | 图片桥接标记 | `openai_codex_transform.go` | **上游可见明文**，有条件注入，仍保留 |
 | B4 | Spark 图片限制标记 | `openai_codex_transform.go` | **上游可见明文**，独立于图片桥接开关，仍保留 |
 | B5 | Claude Code todo guard | `openai_messages_todo_guard.go` | **上游可见明文**，Messages 兼容路径注入，仍保留 |
-| B6 | `python__sub2api` 工具别名 | `openai_codex_tool_names.go` | **上游可见明文**，具有保留工具名兼容作用，仍保留 |
+| B6 | `python__codex` 工具别名 | `openai_codex_tool_names.go` | **上游可见明文**，具有保留工具名兼容作用，仍保留 |
 | C1 | 超长调用 ID 哈希前缀 | `openai_codex_transform.go` | 内部哈希输入，不以该字符串明文出站 |
 | C2 | device/session/full 指纹收敛 | `openai_codex_fingerprint.go` | 显式配置会改变身份区分度；默认关闭，仍保留 |
 | C3 | API Key / 账号会话隔离 | `openai_codex_account_identity.go` | 正常隔离机制，与可选收敛不同，仍保留 |
@@ -326,7 +326,7 @@ reqBody["instructions"] = rendered
 
 <!-- source: 06bb4df4c backend/internal/service/openai_codex_transform.go:138-138 -->
 ```go
-codexImageGenerationBridgeMarker = "<sub2api-codex-image-generation>"
+codexImageGenerationBridgeMarker = "<codex-image-generation-bridge>"
 ```
 
 同文件 [第 1118 行](../../backend/internal/service/openai_codex_transform.go#L1118)，`applyCodexImageGenerationBridgeInstructions` 会将桥接文本追加到 instructions：
@@ -348,7 +348,7 @@ reqBody["instructions"] = existing + "\n\n" + codexImageGenerationBridgeText
 
 <!-- source: 06bb4df4c backend/internal/service/openai_codex_transform.go:140-140 -->
 ```go
-codexSparkImageUnsupportedMarker = "<sub2api-codex-spark-image-unsupported>"
+codexSparkImageUnsupportedMarker = "<codex-spark-image-unsupported>"
 ```
 
 激活入口位于 [同文件第 301 行](../../backend/internal/service/openai_codex_transform.go#L301)：
@@ -370,7 +370,7 @@ if isCodexSparkModel(normalizedModel) && applyCodexSparkImageUnsupportedInstruct
 
 <!-- source: 06bb4df4c backend/internal/service/openai_messages_todo_guard.go:11-11 -->
 ```go
-openAICompatClaudeCodeTodoGuardMarker = "<sub2api-claude-code-todo-guard>"
+openAICompatClaudeCodeTodoGuardMarker = "<claude-code-todo-guard>"
 ```
 
 Codex 协议的 Messages 入口位于 [openai_gateway_messages.go:241](../../backend/internal/service/openai_gateway_messages.go#L241)：
@@ -386,13 +386,13 @@ if shouldAutoInjectPromptCacheKeyForCompat(upstreamModel) {
 
 **判断与状态：** 明文会随正文出站，属于 Messages 兼容逻辑，仍保留；不要误写成所有原生 Responses 请求都会注入。
 
-### B6. 保留工具名 python 被映射为 python__sub2api
+### B6. 保留工具名 python 被映射为 python__codex
 
 **文件与位置：** [backend/internal/service/openai_codex_tool_names.go:15](../../backend/internal/service/openai_codex_tool_names.go#L15)，常量；[第 64 行](../../backend/internal/service/openai_codex_tool_names.go#L64)，名称改写。
 
 <!-- source: 06bb4df4c backend/internal/service/openai_codex_tool_names.go:15-15 -->
 ```go
-codexPythonToolAlias        = "python__sub2api"
+codexPythonToolAlias        = "python__codex"
 ```
 
 <!-- source: 06bb4df4c backend/internal/service/openai_codex_tool_names.go:64-66 -->

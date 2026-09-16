@@ -1846,3 +1846,18 @@ func TestBufferedResponseAccumulator_IgnoresNonFunctionCallItems(t *testing.T) {
 
 	assert.False(t, acc.HasContent())
 }
+
+func TestChatCompletionsToResponses_PreservesDistinctToolCallIDs(t *testing.T) {
+	req := &ChatCompletionsRequest{Model: "gpt-5.5", Messages: []ChatMessage{{Role: "assistant", ToolCalls: []ChatToolCall{{ID: "call_abc", Type: "function", Function: ChatFunctionCall{Name: "search", Arguments: `{"q":"a"}`}}, {ID: "fc_abc", Type: "function", Function: ChatFunctionCall{Name: "search", Arguments: `{"q":"b"}`}}}}, {Role: "tool", ToolCallID: "call_abc", Content: json.RawMessage(`"one"`)}, {Role: "tool", ToolCallID: "fc_abc", Content: json.RawMessage(`"two"`)}}}
+	resp, err := ChatCompletionsToResponses(req)
+	if err != nil {
+		t.Fatalf("convert: %v", err)
+	}
+	var items []ResponsesInputItem
+	if err := json.Unmarshal(resp.Input, &items); err != nil {
+		t.Fatalf("decode input: %v", err)
+	}
+	if len(items) != 4 || items[0].CallID != "call_abc" || items[1].CallID != "fc_abc" || items[2].CallID != "call_abc" || items[3].CallID != "fc_abc" {
+		t.Fatalf("call IDs not preserved: %#v", items)
+	}
+}

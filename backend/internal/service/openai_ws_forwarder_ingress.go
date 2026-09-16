@@ -89,6 +89,15 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 	if _, err := s.prepareCodexAccountIdentitySource(ctx, c, account); err != nil {
 		return err
 	}
+	// Stage one fingerprint snapshot for the native WS session.  HTTP ingress
+	// performs this during request decoding; native WS must do it before parsing
+	// the first turn so payload metadata and handshake headers share the same
+	// converged IDs.  Always clear stale state on opt-out/failover.
+	var fingerprintHeaders http.Header
+	if c != nil && c.Request != nil {
+		fingerprintHeaders = c.Request.Header
+	}
+	stageCodexFingerprintIDs(c, resolveCodexFingerprintIDsFromRequest(account, fingerprintHeaders))
 	if err := validateOpenAIWSBearerToken(account, token); err != nil {
 		return err
 	}
@@ -326,6 +335,11 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 		}
 		if accountScoped {
 			normalized = accountScopedPayload
+		}
+		if fingerprinted, changed, fingerprintErr := applyCodexFingerprintClientMetadataRaw(normalized, stagedCodexFingerprintIDs(c, account)); fingerprintErr != nil {
+			return openAIWSClientPayload{}, NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "invalid websocket fingerprint metadata", fingerprintErr)
+		} else if changed {
+			normalized = fingerprinted
 		}
 		if responsesLite {
 			litePayload, _, liteErr := normalizeOpenAIResponsesLitePayloadForAccount(normalized, account)
