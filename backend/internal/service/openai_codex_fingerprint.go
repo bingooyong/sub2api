@@ -57,6 +57,21 @@ func applyStagedCodexFingerprintClientMetadata(c *gin.Context, account *Account,
 	return applyCodexFingerprintClientMetadata(reqBody, stagedCodexFingerprintIDs(c, account))
 }
 
+// applyOpenAIWSFingerprintClientMetadata keeps the connection's staged identity
+// immutable while matching a default prompt_cache_key against this frame's body
+// session. Later turns may supply a different session or an explicit cache key.
+// Call after account scoping, just as for the handshake headers.
+func applyOpenAIWSFingerprintClientMetadata(c *gin.Context, account *Account, body []byte) ([]byte, bool, error) {
+	ids := stagedCodexFingerprintIDs(c, account)
+	if ids == nil {
+		return body, false, nil
+	}
+	frameIDs := *ids
+	frameIDs.originalBodySessionID = ""
+	frameIDs.originalBodySessionIDCaptured = false
+	return applyCodexFingerprintClientMetadataRaw(body, &frameIDs)
+}
+
 // codexFingerprintMode 控制 OAuth 账号出站请求的设备指纹收敛强度。
 // 多人共享同一 OAuth 账号时，每个用户的 Codex 客户端会携带各自不同的
 // installation_id / session_id / thread_id，上游据此判定设备数和会话数。

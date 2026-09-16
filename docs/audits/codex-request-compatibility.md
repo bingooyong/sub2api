@@ -191,3 +191,59 @@ accurate opt-out forwarding instead of replacing it with another machine's captu
 tuple. It does not remove functional bridge markers, copy an official transport
 fingerprint, or claim to prevent upstream account restrictions. Such restrictions
 cannot be attributed to a specific string from source inspection alone.
+
+
+## Follow-up: passive capture and native WebSocket repair (2026-09-16)
+
+This section supersedes the earlier marker-related limitation for newly generated
+requests: image bridge, Spark and todo instructions now use unbranded markers, and
+the Python alias is `python__codex`. Legacy markers remain detectable for idempotence;
+existing caller-supplied text is not globally scrubbed. Stable hash domains remain
+unchanged. Renaming these markers does not make custom compatibility protocols
+identical to official CLI behavior.
+
+A user-authorized macOS process-filtered capture was preserved locally under
+`docs-local/codex-wire-audit-2026-09-16/` (Git-ignored). Its immutable snapshot contains
+40,771 packets over 127.545 seconds; an independent tcpdump read matched the count.
+71 target proxy CONNECT requests succeeded with status 200. Their allowlisted proxy
+User-Agent identifies `codex-tui/0.153.4` on macOS arm64. All 71 observed ClientHellos
+lack ALPN and supported_versions; the 70 observable ServerHellos select TLS 1.2 and
+`TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384`. Missing handshake data and reassembly gaps
+are not evidence of failed application requests.
+
+These observations describe the local client-to-relay leg. CONNECT headers are
+outside the encrypted tunnel and do not prove the inner HTTPS User-Agent. Encrypted
+bodies, SSE and WebSocket frames were not decrypted. The relay-to-OpenAI TLS profile
+and deployed source revision cannot be inferred from this capture. The Go outbound
+transport remains unchanged; the sample does not justify a global TLS downgrade
+or replacing the default identity with a single machine's macOS tuple.
+
+Source inspection exposed a separate native WebSocket v2 passthrough defect:
+handshake headers used staged convergence IDs, while first and later request frames
+only applied account identity scoping. The adapter now applies convergence after
+account scoping to the initial frame and later `response.create` / `session.update`
+frames. The pooled ingress path and passthrough path use a per-frame copy of the
+staged IDs so default cache keys are matched against each frame's original session,
+without mutating the connection's snapshot or rewriting explicit custom keys beyond
+the existing account scoping policy. Off mode, ordinary API-key accounts, account
+failover guards and hash domains retain their prior behavior.
+
+Regression coverage inspects the real native ingress, outbound handshake and
+multiple upstream frame writes. It covers off/device/session/full, ordinary API-key
+accounts, stale staged state, changing body sessions, default/custom cache keys and
+embedded turn metadata. The device/session/full cases failed before the adapter fix.
+This is a code-derived defect and regression result, not a claim that the encrypted
+capture contained the same defect.
+
+
+### Verification for the WebSocket follow-up
+
+- `go test -tags=unit -p 2 ./internal/service -count=1`: passed (206.682 s).
+- `go test -tags=integration -p 2 ./internal/service -run '^(TestPassthroughFingerprint_|TestWSFingerprint_)' -count=1`: passed (7.434 s); this runs the local WebSocket regressions, not the database/container integration suite.
+- `go vet -tags=unit ./internal/service`: passed.
+- `go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.0 run --timeout=30m ./...`: passed, `0 issues.` after fixing an unchecked deferred test cleanup.
+- `gofmt -l` on the four changed Go files and `git diff --check`: passed.
+
+Commands ran from `backend/` unless the path already includes it. The service unit
+suite and repository-wide lint were run; the full backend integration/container
+suite and production deployment were not. Logs and the raw capture remain local.

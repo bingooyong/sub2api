@@ -36,3 +36,7 @@
 - 保留 Codex 安装、会话、线程和窗口指纹处理；不修改既有哈希命名空间。
 - Codex CLI 模拟支持 Responses、Responses Lite、SSE、tool-call correlation 和 `client_metadata`。
 - 默认 Codex 身份仍为应用层兼容，不代表 TLS、HTTP/2 或官方 OAuth 设备认证完全复制。
+- 图片桥接、Spark 限制提示和 todo guard 改用无品牌标记，Python 工具别名改为 `python__codex`；保留旧标记的幂等检测和原有哈希命名空间。
+- 修复 WebSocket v2 直通首帧及后续帧未应用已暂存指纹的问题，使配置的收敛身份与握手一致。
+- WebSocket 按帧独立识别默认 `prompt_cache_key`，避免后续帧复用首帧 session 判断；保留自定义缓存键的账号隔离语义。
+- 补充真实 WebSocket 入口的多帧回归测试，覆盖 off/device/session/full 模式和普通 API Key 账号。

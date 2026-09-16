@@ -336,7 +336,7 @@ func (s *OpenAIGatewayService) ProxyResponsesWebSocketFromClient(
 		if accountScoped {
 			normalized = accountScopedPayload
 		}
-		if fingerprinted, changed, fingerprintErr := applyCodexFingerprintClientMetadataRaw(normalized, stagedCodexFingerprintIDs(c, account)); fingerprintErr != nil {
+		if fingerprinted, changed, fingerprintErr := applyOpenAIWSFingerprintClientMetadata(c, account, normalized); fingerprintErr != nil {
 			return openAIWSClientPayload{}, NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "invalid websocket fingerprint metadata", fingerprintErr)
 		} else if changed {
 			normalized = fingerprinted
