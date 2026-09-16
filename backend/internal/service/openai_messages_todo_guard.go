@@ -21,7 +21,7 @@ func appendOpenAICompatClaudeCodeTodoGuard(req *apicompat.ResponsesRequest) bool
 	if err := json.Unmarshal(req.Input, &items); err != nil {
 		return false
 	}
-	if len(items) == 0 || responsesInputItemsContainText(items, openAICompatClaudeCodeTodoGuardMarker) || responsesInputItemsContainText(items, "<sub2api-claude-code-todo-guard>") {
+	if len(items) == 0 || responsesInputItemsContainText(items, openAICompatClaudeCodeTodoGuardMarker) {
 		return false
 	}
 
@@ -62,7 +62,7 @@ func appendOpenAICompatClaudeCodeTodoGuardToRequestBody(reqBody map[string]any) 
 	}
 
 	input, ok := reqBody["input"].([]any)
-	if !ok || len(input) == 0 || inputContainsText(input, openAICompatClaudeCodeTodoGuardMarker) || inputContainsText(input, "<sub2api-claude-code-todo-guard>") {
+	if !ok || len(input) == 0 || inputContainsText(input, openAICompatClaudeCodeTodoGuardMarker) {
 		return false
 	}
 

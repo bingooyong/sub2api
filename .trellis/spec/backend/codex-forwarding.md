@@ -107,8 +107,8 @@ Gateway-generated compatibility instructions must not identify the gateway by
 brand in upstream-visible text or tool names. Current markers are
 `<codex-image-generation-bridge>`, `<codex-spark-image-unsupported>`, and
 `<claude-code-todo-guard>`; the reserved Python alias is `python__codex`.
-Legacy `<sub2api-...>` markers are recognized only for idempotence and are not
-emitted for newly transformed requests. Existing `sub2api:` hash namespaces are
+Legacy `<sub2api-...>` markers are no longer recognized or emitted for new
+sessions. Existing `sub2api:` hash namespaces are
 internal derivation inputs and must remain stable.
 
 Native WebSocket ingress stages a fingerprint snapshot once per session and

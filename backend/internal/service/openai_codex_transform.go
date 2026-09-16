@@ -1105,7 +1105,7 @@ func applyCodexImageGenerationBridgeInstructions(reqBody map[string]any) bool {
 	}
 
 	existing, _ := reqBody["instructions"].(string)
-	if strings.Contains(existing, codexImageGenerationBridgeMarker) || strings.Contains(existing, "<sub2api-codex-image-generation>") {
+	if strings.Contains(existing, codexImageGenerationBridgeMarker) {
 		return false
 	}
 
@@ -1124,7 +1124,7 @@ func applyCodexSparkImageUnsupportedInstructions(reqBody map[string]any) bool {
 		return false
 	}
 	existing, _ := reqBody["instructions"].(string)
-	if strings.Contains(existing, codexSparkImageUnsupportedMarker) || strings.Contains(existing, "<sub2api-codex-spark-image-unsupported>") {
+	if strings.Contains(existing, codexSparkImageUnsupportedMarker) {
 		return false
 	}
 	existing = strings.TrimRight(existing, " \t\r\n")

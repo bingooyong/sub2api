@@ -197,9 +197,9 @@ cannot be attributed to a specific string from source inspection alone.
 
 This section supersedes the earlier marker-related limitation for newly generated
 requests: image bridge, Spark and todo instructions now use unbranded markers, and
-the Python alias is `python__codex`. Legacy markers remain detectable for idempotence;
-existing caller-supplied text is not globally scrubbed. Stable hash domains remain
-unchanged. Renaming these markers does not make custom compatibility protocols
+the Python alias is `python__codex`. Legacy marker detection has been removed for
+new sessions; existing caller-supplied text is not globally scrubbed. Stable hash
+domains remain unchanged. Renaming these markers does not make custom compatibility protocols
 identical to official CLI behavior.
 
 A user-authorized macOS process-filtered capture was preserved locally under

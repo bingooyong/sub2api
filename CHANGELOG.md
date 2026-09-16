@@ -40,3 +40,4 @@
 - 修复 WebSocket v2 直通首帧及后续帧未应用已暂存指纹的问题，使配置的收敛身份与握手一致。
 - WebSocket 按帧独立识别默认 `prompt_cache_key`，避免后续帧复用首帧 session 判断；保留自定义缓存键的账号隔离语义。
 - 补充真实 WebSocket 入口的多帧回归测试，覆盖 off/device/session/full 模式和普通 API Key 账号。
+- 新会话不再识别旧版 `sub2api` 标记，避免历史品牌标记触发兼容分支。
