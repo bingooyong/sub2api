@@ -136,6 +136,7 @@ docs/*
 !docs/handoffs/
 docs/handoffs/*
 !docs/handoffs/*.md
+!docs/ANTIGRAVITY_ATTRIBUTION_429.md
 !docs/PAYMENT.md
 !docs/PAYMENT_CN.md
 !docs/ADMIN_PAYMENT_INTEGRATION_API.md
@@ -149,17 +150,21 @@ docs/audits/*
 !docs/audits/codex-request-compatibility.md
 !docs/audits/codex-cli-0.153.4-exec-observation.json
 !docs/audits/sub2api-fingerprint-findings.zh-CN.md
+!docs/codex-credits.md
 !docs/legal/
 !docs/legal/*.md
 !docs/screenshots/
 docs/screenshots/*
 !docs/screenshots/mobile-account-actions-menu.png
+!docs/screenshots/codex-referral-dialog.png
+!docs/screenshots/codex-referral-success.png
 .serena/
 .codex/
 frontend/coverage/
 aicodex
 output/
 .codegraph/
+issues/
 
 # Vitest / Vite cache at repo root
 .vite/
