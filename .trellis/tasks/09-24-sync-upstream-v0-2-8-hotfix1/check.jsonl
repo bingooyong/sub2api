@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "Quality check section for Codex forwarding changes."}
+{"file": ".trellis/spec/backend/codex-forwarding.md", "reason": "Acceptance contract for identity opt-out, unbranded markers, call IDs, and per-frame WebSocket convergence."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Backend quality bar used by the check pass."}
+{"file": ".trellis/tasks/09-24-sync-upstream-v0-2-8-hotfix1/research/upstream-v028-delta.md", "reason": "Expected merge input and files whose local behavior must survive."}
