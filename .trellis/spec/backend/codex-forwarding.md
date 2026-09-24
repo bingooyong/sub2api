@@ -31,6 +31,12 @@ builders, compact, passthrough, and WebSocket handshakes. Without an incoming re
 do not clear generated headers. Ordinary API-key forwarding and synthetic probe,
 authentication, and Live identities retain their existing behavior.
 
+`applyOpenCodeUpstreamUserAgent` is not an account header override. It runs after
+identity preservation and replaces `User-Agent` only for an official Command Code
+host or an OpenCode account or host. Every other request returns immediately.
+Do not move preservation after that helper, and do not remove the helper to keep
+the Codex opt-out. The Command Code canonical UA is a Cloudflare 1010 guard.
+
 A WebSocket retains its handshake metadata. With enforcement disabled, its reuse
 key must include all effective values of the three identity headers, with
 unambiguous boundaries and distinct missing/empty representations.
@@ -46,6 +52,8 @@ reference rules. Keep account/API-key isolation and stable hash domains intact.
 | Condition | Result |
 | --- | --- |
 | Opt-out, valid caller metadata | Preserve complete values without version elevation |
+| OpenCode account/host, or official Command Code host | `applyOpenCodeUpstreamUserAgent` may replace `User-Agent` after preservation |
+| Any other account | That helper no-ops; preserved Codex identity remains |
 | Opt-out, missing metadata | Do not synthesize Codex metadata |
 | Opt-out, invalid HTTP field value | Drop that value; do not trim control bytes into a valid identity |
 | No incoming request, API-key account, or explicit UA/Force override | Keep that path's established policy |
