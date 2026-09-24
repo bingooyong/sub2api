@@ -1,0 +1,30 @@
+{
+  "id": "sync-upstream-v0-2-7-hotfix1",
+  "name": "sync-upstream-v0-2-7-hotfix1",
+  "title": "Sync upstream and build v0.2.7--hotfix1",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": "backend,frontend,release",
+  "package": null,
+  "priority": "P2",
+  "creator": "lvyong",
+  "assignee": "lvyong",
+  "createdAt": "2026-09-21",
+  "completedAt": "2026-09-22",
+  "branch": "dev",
+  "base_branch": "upstream/main",
+  "worktree_path": null,
+  "commit": "d329d452b3af056894886ea48d548c07e51bf20b",
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {
+    "artifact": "release/sub2api-v0.2.7--hotfix1-linux-amd64.tar.gz",
+    "artifact_sha256": "f35cbe2578efc65840853994687f541a61318a5ea6d78df93b05d43aeb7c3ad6",
+    "final_upstream_main": "1c0a69c0ceddb2fd21581c17ab09f6c500b89ba1"
+  }
+}

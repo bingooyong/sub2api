@@ -1,0 +1,2 @@
+{"file":".trellis/spec/backend/codex-forwarding.md","reason":"Authoritative contracts for Codex identity, WebSocket fingerprint convergence, tool-call IDs, isolation, and marker behavior."}
+{"file":"docs/audits/codex-request-compatibility.md","reason":"Historical evidence and validation scope for the local fingerprint changes that the upstream merge must preserve."}

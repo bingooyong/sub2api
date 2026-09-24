@@ -1,0 +1,2 @@
+{"file":".trellis/spec/backend/codex-forwarding.md","reason":"Use its required regressions and invariants to review preservation after the merge."}
+{"file":"docs/audits/codex-request-compatibility.md","reason":"Compare final behavior and validation claims against the existing audited baseline."}
