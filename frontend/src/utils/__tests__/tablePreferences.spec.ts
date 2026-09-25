@@ -14,6 +14,7 @@ describe('tablePreferences', () => {
   })
 
   it('returns built-in defaults when app config is missing', () => {
+    expect(DEFAULT_TABLE_PAGE_SIZE).toBe(50)
     expect(getConfiguredTableDefaultPageSize()).toBe(DEFAULT_TABLE_PAGE_SIZE)
     expect(getConfiguredTablePageSizeOptions()).toEqual(DEFAULT_TABLE_PAGE_SIZE_OPTIONS)
   })

@@ -525,6 +525,7 @@ import Icon from '@/components/icons/Icon.vue'
 import ErrorPassthroughRulesModal from '@/components/admin/ErrorPassthroughRulesModal.vue'
 import TLSFingerprintProfilesModal from '@/components/admin/TLSFingerprintProfilesModal.vue'
 import { fetchAllAccountIds } from '@/utils/accountSelection'
+import { matchesPlanTier } from '@/utils/planTierFilter'
 import { buildGrokUsageRefreshKey, buildOpenAIUsageRefreshKey } from '@/utils/accountUsageRefresh'
 import { formatDateTime, formatRelativeTime } from '@/utils/format'
 import { proxyExpiryBadgeClass, proxyExpiryLabelKey } from '@/utils/proxyExpiry'
@@ -564,6 +565,7 @@ type AccountBulkEditTarget =
         group?: string
         search?: string
         privacy_mode?: string
+        plan_tier?: string
         sort_by?: string
         sort_order?: AccountSortOrder
       }
@@ -1083,6 +1085,7 @@ const {
     type: '',
     status: '',
     privacy_mode: '',
+    plan_tier: '',
     group: '',
     search: '',
     lite: '1',
@@ -1182,6 +1185,7 @@ const buildUpstreamBillingRateFilters = () => {
     group: typeof rawParams.group === 'string' ? rawParams.group : '',
     search: typeof rawParams.search === 'string' ? rawParams.search : '',
     privacy_mode: typeof rawParams.privacy_mode === 'string' ? rawParams.privacy_mode : '',
+    plan_tier: typeof rawParams.plan_tier === 'string' ? rawParams.plan_tier : '',
     sort_by: sortState.sort_by,
     sort_order: sortState.sort_order
   }
@@ -1449,11 +1453,11 @@ const refreshAccountsIncrementally = async () => {
         type?: string
         status?: string
         privacy_mode?: string
+        plan_tier?: string
         group?: string
         search?: string
         sort_by?: string
         sort_order?: AccountSortOrder
-
       },
       { etag: autoRefreshETag.value }
     )
@@ -2054,6 +2058,7 @@ const buildBulkEditFilterSnapshot = () => {
     group: typeof rawParams.group === 'string' ? rawParams.group : '',
     search: typeof rawParams.search === 'string' ? rawParams.search : '',
     privacy_mode: typeof rawParams.privacy_mode === 'string' ? rawParams.privacy_mode : '',
+    plan_tier: typeof rawParams.plan_tier === 'string' ? rawParams.plan_tier : '',
     sort_by: typeof rawParams.sort_by === 'string' ? rawParams.sort_by : '',
     sort_order: sortOrder
   }
@@ -2130,6 +2135,7 @@ const buildAccountQueryFilters = () => ({
   status: params.status || '',
   group: params.group || '',
   privacy_mode: params.privacy_mode || '',
+  plan_tier: params.plan_tier || '',
   search: params.search || '',
   sort_by: sortState.sort_by,
   sort_order: sortState.sort_order
@@ -2170,6 +2176,20 @@ const accountMatchesCurrentFilters = (account: Account) => {
     if (filters.privacy_mode === ACCOUNT_PRIVACY_MODE_UNSET_QUERY_VALUE) {
       if (privacyMode.trim() !== '') return false
     } else if (privacyMode !== filters.privacy_mode) {
+      return false
+    }
+  }
+  if (filters.plan_tier && filters.platform) {
+    const cred = account.credentials || {}
+    if (
+      !matchesPlanTier(
+        filters.platform,
+        filters.plan_tier,
+        typeof cred.plan_type === 'string' ? cred.plan_type : undefined,
+        typeof cred.subscription_tier === 'string' ? cred.subscription_tier : undefined,
+        typeof account.parent_plan_type === 'string' ? account.parent_plan_type : undefined
+      )
+    ) {
       return false
     }
   }

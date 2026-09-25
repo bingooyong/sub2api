@@ -689,7 +689,7 @@ func TestAPIContracts(t *testing.T) {
 
 					service.SettingKeyDefaultConcurrency:   "5",
 					service.SettingKeyDefaultBalance:       "1.25",
-					service.SettingKeyTableDefaultPageSize: "20",
+					service.SettingKeyTableDefaultPageSize: "50",
 					service.SettingKeyTablePageSizeOptions: "[10,20,50,100]",
 
 					service.SettingKeyOpsMonitoringEnabled:                               "false",
@@ -893,7 +893,7 @@ func TestAPIContracts(t *testing.T) {
 					"grok_cross_client_model_map_enabled": true,
 					"purchase_subscription_enabled": false,
 					"purchase_subscription_url": "",
-					"table_default_page_size": 20,
+					"table_default_page_size": 50,
 						"table_page_size_options": [10, 20, 50, 100],
 					"min_claude_code_version": "",
 					"max_claude_code_version": "",
@@ -1183,7 +1183,7 @@ func TestAPIContracts(t *testing.T) {
 					"grok_cross_client_model_map_enabled": true,
 					"purchase_subscription_enabled": false,
 					"purchase_subscription_url": "",
-					"table_default_page_size": 20,
+					"table_default_page_size": 50,
 					"table_page_size_options": [10, 20, 50],
 					"default_platform_quotas": {"anthropic":{"daily":null,"weekly":null,"monthly":null},"antigravity":{"daily":null,"weekly":null,"monthly":null},"deepseek":{"daily":null,"weekly":null,"monthly":null},"gemini":{"daily":null,"weekly":null,"monthly":null},"grok":{"daily":null,"weekly":null,"monthly":null},"kimi":{"daily":null,"weekly":null,"monthly":null},"minimax":{"daily":null,"weekly":null,"monthly":null},"openai":{"daily":null,"weekly":null,"monthly":null},"opencode_go":{"daily":null,"weekly":null,"monthly":null},"zhipu":{"daily":null,"weekly":null,"monthly":null}},
 					"auth_source_default_email_platform_quotas": null,
@@ -1912,11 +1912,11 @@ func (s *stubAccountRepo) List(ctx context.Context, params pagination.Pagination
 	return nil, nil, errors.New("not implemented")
 }
 
-func (s *stubAccountRepo) ListAllWithFilters(context.Context, string, string, string, string, int64, string) ([]service.Account, error) {
+func (s *stubAccountRepo) ListAllWithFilters(context.Context, string, string, string, string, int64, string, string) ([]service.Account, error) {
 	return nil, nil
 }
 
-func (s *stubAccountRepo) ListWithFilters(ctx context.Context, params pagination.PaginationParams, platform, accountType, status, search string, groupID int64, privacyMode string) ([]service.Account, *pagination.PaginationResult, error) {
+func (s *stubAccountRepo) ListWithFilters(ctx context.Context, params pagination.PaginationParams, platform, accountType, status, search string, groupID int64, privacyMode, planTier string) ([]service.Account, *pagination.PaginationResult, error) {
 	return nil, nil, errors.New("not implemented")
 }
 

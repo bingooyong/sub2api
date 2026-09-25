@@ -185,6 +185,7 @@ type BulkUpdateAccountFilters struct {
 	Group       string `json:"group"`
 	Search      string `json:"search"`
 	PrivacyMode string `json:"privacy_mode"`
+	PlanTier    string `json:"plan_tier"`
 }
 
 // CheckMixedChannelRequest represents check mixed channel risk request
@@ -621,14 +622,14 @@ func (h *AccountHandler) listAccountSchedulerScoreFilterPool(
 	ctx context.Context,
 	platform, accountType, status, search string,
 	groupID int64,
-	privacyMode string,
+	privacyMode, planTier string,
 ) []service.Account {
 	if h.adminService == nil || (platform != "" && platform != service.PlatformOpenAI) {
 		return nil
 	}
 	// 池只用于 OpenAI 分数计算（非 OpenAI 账号会在打分时被丢弃），
 	// 无论列表页平台过滤为何，查询一律限定 openai，避免无过滤时全表扫描。
-	accounts, err := h.adminService.ListAccountsForSchedulerScoreFilter(ctx, service.PlatformOpenAI, accountType, status, search, groupID, privacyMode)
+	accounts, err := h.adminService.ListAccountsForSchedulerScoreFilter(ctx, service.PlatformOpenAI, accountType, status, search, groupID, privacyMode, planTier)
 	if err != nil {
 		slog.Warn("openai_scheduler_filter_score_pool_failed", "error", err)
 		return nil
@@ -645,6 +646,7 @@ func (h *AccountHandler) List(c *gin.Context) {
 	status := c.Query("status")
 	search := c.Query("search")
 	privacyMode := strings.TrimSpace(c.Query("privacy_mode"))
+	planTier := strings.TrimSpace(c.Query("plan_tier"))
 	sortBy := c.DefaultQuery("sort_by", "name")
 	sortOrder := c.DefaultQuery("sort_order", "asc")
 	// 标准化和验证 search 参数
@@ -674,7 +676,7 @@ func (h *AccountHandler) List(c *gin.Context) {
 		}
 	}
 
-	accounts, total, err := h.adminService.ListAccounts(c.Request.Context(), page, pageSize, platform, accountType, status, search, groupID, privacyMode, sortBy, sortOrder)
+	accounts, total, err := h.adminService.ListAccounts(c.Request.Context(), page, pageSize, platform, accountType, status, search, groupID, privacyMode, planTier, sortBy, sortOrder)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -719,7 +721,7 @@ func (h *AccountHandler) List(c *gin.Context) {
 		}
 	}
 	if includeSchedulerScore && pageHasOpenAIAccounts {
-		schedulerFilterPool := h.listAccountSchedulerScoreFilterPool(c.Request.Context(), platform, accountType, status, search, groupID, privacyMode)
+		schedulerFilterPool := h.listAccountSchedulerScoreFilterPool(c.Request.Context(), platform, accountType, status, search, groupID, privacyMode, planTier)
 		schedulerScores, schedulerGroupScores = h.buildOpenAIAccountSchedulerScores(c.Request.Context(), accounts, schedulerFilterPool)
 	}
 
@@ -854,7 +856,7 @@ func (h *AccountHandler) List(c *gin.Context) {
 				CurrentRPM:         item.CurrentRPM,
 			}
 		}
-		etag := buildAccountsListETag(compact, total, page, pageSize, platform, accountType, status, search, true)
+		etag := buildAccountsListETag(compact, total, page, pageSize, platform, accountType, status, search, planTier, true)
 		if etag != "" {
 			c.Header("ETag", etag)
 			c.Header("Vary", "If-None-Match")
@@ -867,7 +869,7 @@ func (h *AccountHandler) List(c *gin.Context) {
 		return
 	}
 
-	etag := buildAccountsListETag(result, total, page, pageSize, platform, accountType, status, search, false)
+	etag := buildAccountsListETag(result, total, page, pageSize, platform, accountType, status, search, planTier, false)
 	if etag != "" {
 		c.Header("ETag", etag)
 		c.Header("Vary", "If-None-Match")
@@ -884,7 +886,7 @@ func buildAccountsListETag[T any](
 	items []T,
 	total int64,
 	page, pageSize int,
-	platform, accountType, status, search string,
+	platform, accountType, status, search, planTier string,
 	lite bool,
 ) string {
 	payload := struct {
@@ -895,6 +897,7 @@ func buildAccountsListETag[T any](
 		AccountType string `json:"type"`
 		Status      string `json:"status"`
 		Search      string `json:"search"`
+		PlanTier    string `json:"plan_tier"`
 		Lite        bool   `json:"lite"`
 		Items       []T    `json:"items"`
 	}{
@@ -905,6 +908,7 @@ func buildAccountsListETag[T any](
 		AccountType: accountType,
 		Status:      status,
 		Search:      search,
+		PlanTier:    planTier,
 		Lite:        lite,
 		Items:       items,
 	}
@@ -2391,6 +2395,7 @@ func toServiceBulkUpdateAccountFilters(filters *BulkUpdateAccountFilters) *servi
 		Group:       filters.Group,
 		Search:      filters.Search,
 		PrivacyMode: filters.PrivacyMode,
+		PlanTier:    filters.PlanTier,
 	}
 }
 
@@ -3205,7 +3210,7 @@ func (h *AccountHandler) BatchRefreshTier(c *gin.Context) {
 	accounts := make([]*service.Account, 0)
 
 	if len(req.AccountIDs) == 0 {
-		allAccounts, _, err := h.adminService.ListAccounts(ctx, 1, 10000, "gemini", "oauth", "", "", 0, "", "name", "asc")
+		allAccounts, _, err := h.adminService.ListAccounts(ctx, 1, 10000, "gemini", "oauth", "", "", 0, "", "", "name", "asc")
 		if err != nil {
 			response.ErrorFrom(c, err)
 			return

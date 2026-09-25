@@ -37,13 +37,13 @@ import type {
 /**
  * List all accounts with pagination
  * @param page - Page number (default: 1)
- * @param pageSize - Items per page (default: 20)
+ * @param pageSize - Items per page (default: 50)
  * @param filters - Optional filters
  * @returns Paginated list of accounts
  */
 export async function list(
   page: number = 1,
-  pageSize: number = 20,
+  pageSize: number = 50,
   filters?: {
     platform?: string
     type?: string
@@ -51,6 +51,7 @@ export async function list(
     group?: string
     search?: string
     privacy_mode?: string
+    plan_tier?: string
     lite?: string
     include_scheduler_score?: string
     sort_by?: string
@@ -85,7 +86,7 @@ export interface AccountUpstreamBillingRatesWithEtagResult {
 
 export async function getUpstreamBillingRatesWithEtag(
   page: number = 1,
-  pageSize: number = 20,
+  pageSize: number = 50,
   filters?: {
     platform?: string
     type?: string
@@ -93,6 +94,7 @@ export async function getUpstreamBillingRatesWithEtag(
     group?: string
     search?: string
     privacy_mode?: string
+    plan_tier?: string
     sort_by?: string
     sort_order?: 'asc' | 'desc'
   },
@@ -118,7 +120,7 @@ export async function getUpstreamBillingRatesWithEtag(
 
 export async function listWithEtag(
   page: number = 1,
-  pageSize: number = 20,
+  pageSize: number = 50,
   filters?: {
     platform?: string
     type?: string
@@ -126,6 +128,7 @@ export async function listWithEtag(
     group?: string
     search?: string
     privacy_mode?: string
+    plan_tier?: string
     lite?: string
     include_scheduler_score?: string
     sort_by?: string
@@ -726,6 +729,7 @@ export async function exportData(options?: {
     status?: string
     group?: string
     privacy_mode?: string
+    plan_tier?: string
     search?: string
     sort_by?: string
     sort_order?: 'asc' | 'desc'
@@ -736,12 +740,13 @@ export async function exportData(options?: {
   if (options?.ids && options.ids.length > 0) {
     params.ids = options.ids.join(',')
   } else if (options?.filters) {
-    const { platform, type, status, group, privacy_mode, search, sort_by, sort_order } = options.filters
+    const { platform, type, status, group, privacy_mode, plan_tier, search, sort_by, sort_order } = options.filters
     if (platform) params.platform = platform
     if (type) params.type = type
     if (status) params.status = status
     if (group) params.group = group
     if (privacy_mode) params.privacy_mode = privacy_mode
+    if (plan_tier) params.plan_tier = plan_tier
     if (search) params.search = search
     if (sort_by) params.sort_by = sort_by
     if (sort_order) params.sort_order = sort_order

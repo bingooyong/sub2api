@@ -20,12 +20,17 @@ This directory contains guidelines for backend development. Fill in each file wi
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
 | [Logging Guidelines](./logging-guidelines.md) | Structured logging, log levels | To fill |
 | [Codex Forwarding](./codex-forwarding.md) | Client metadata, socket reuse, and native tool correlation | Documented |
+| [Admin Account List](./account-admin-list.md) | Account table filters, plan_tier vs type, page-size defaults | Documented |
 
 ## Quality Check
 
 For Codex forwarding changes, follow the assertion points and validation commands
 in [Codex Forwarding](./codex-forwarding.md). Preserve distinct call and item ID
 semantics and verify metadata at the final HTTP or WebSocket boundary.
+
+For admin account list filter or shared table page-size changes, follow
+[Admin Account List](./account-admin-list.md). Keep `type` and `plan_tier`
+separate and keep plan aliases platform-scoped.
 
 ---
 

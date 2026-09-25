@@ -9254,7 +9254,7 @@ const openaiFastPolicyLoaded = ref(false);
 
 const tablePageSizeMin = 5;
 const tablePageSizeMax = 1000;
-const tablePageSizeDefault = 20;
+const tablePageSizeDefault = 50;
 
 function defaultLoginAgreementDocuments(): LoginAgreementDocument[] {
   return [

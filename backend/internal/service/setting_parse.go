@@ -71,7 +71,7 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeySiteLogo:                                  "",
 		SettingKeyPurchaseSubscriptionEnabled:               "false",
 		SettingKeyPurchaseSubscriptionURL:                   "",
-		SettingKeyTableDefaultPageSize:                      "20",
+		SettingKeyTableDefaultPageSize:                      "50",
 		SettingKeyTablePageSizeOptions:                      "[10,20,50,100]",
 		SettingKeyCustomMenuItems:                           "[]",
 		SettingKeyCustomEndpoints:                           "[]",
@@ -1310,7 +1310,7 @@ func mergeProviderDefaultGrantSettings(globalDefaults ProviderDefaultGrantSettin
 }
 
 func parseTablePreferences(defaultPageSizeRaw, optionsRaw string) (int, []int) {
-	defaultPageSize := 20
+	defaultPageSize := 50
 	if v, err := strconv.Atoi(strings.TrimSpace(defaultPageSizeRaw)); err == nil {
 		defaultPageSize = v
 	}
@@ -1326,7 +1326,7 @@ func parseTablePreferences(defaultPageSizeRaw, optionsRaw string) (int, []int) {
 func normalizeTablePreferences(defaultPageSize int, options []int) (int, []int) {
 	const minPageSize = 5
 	const maxPageSize = 1000
-	const fallbackPageSize = 20
+	const fallbackPageSize = 50
 
 	seen := make(map[int]struct{}, len(options))
 	normalizedOptions := make([]int, 0, len(options))

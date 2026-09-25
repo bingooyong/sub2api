@@ -84,6 +84,8 @@ export default {
       notesHint: 'Notes are optional',
       allPlatforms: 'All Platforms',
       allTypes: 'All Types',
+      allPlanTiers: 'All Plan Tiers',
+      planTier: 'Plan Tier',
       allStatus: 'All Status',
       allGroups: 'All Groups',
       ungroupedGroup: 'Ungrouped',
