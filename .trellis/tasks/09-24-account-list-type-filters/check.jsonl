@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend quality check for AccountsView filter UX."}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "Frontend quality bar for the check pass."}
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend quality check for list filter and settings defaults."}
+{"file": ".trellis/tasks/09-24-account-list-type-filters/design.md", "reason": "Acceptance mapping for aliases, disabled-empty-platform, and shared page size 50."}

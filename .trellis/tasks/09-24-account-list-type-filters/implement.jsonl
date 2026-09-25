@@ -1,0 +1,3 @@
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend conventions for AccountsView and shared table preferences."}
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend quality entry for account list API and repository filters."}
+{"file": ".trellis/tasks/09-24-account-list-type-filters/design.md", "reason": "Plan-tier catalogs, query contract, and pagination default boundaries."}
