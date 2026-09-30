@@ -1,0 +1,6 @@
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"The feature crosses migrations, repository, service/runner, admin handlers, API types, and Vue UI; use the guide to keep contracts aligned."}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"Quality operations extend existing scheduled-test and account isolation behavior; use the guide to reuse boundaries and avoid a parallel state machine."}
+{"file":".trellis/spec/backend/codex-forwarding.md","reason":"Quality probes must preserve local Codex metadata, identity/fingerprint, WebSocket, and native tool correlation at the final forwarding boundary."}
+{"file":".trellis/spec/backend/account-admin-list.md","reason":"Admin account selection and plan-tier/type semantics must remain platform-scoped and compatible with the existing account administration surface."}
+{"file":".trellis/spec/backend/index.md","reason":"Backend package conventions and quality-check entry points for migrations, repositories, services, and handlers."}
+{"file":".trellis/spec/frontend/index.md","reason":"Frontend package conventions for admin plan forms, tables, localization, and API types."}

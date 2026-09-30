@@ -1,0 +1,6 @@
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Review the complete database-to-API-to-UI contract and verify enum/nullability/error behavior at each boundary."}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"Check that scheduled tests, account isolation, leases, and pagination reuse existing utilities instead of duplicating behavior."}
+{"file":".trellis/spec/backend/codex-forwarding.md","reason":"Regression review for fingerprint, client metadata, WebSocket, call/item ID, and account isolation behavior touched by quality probes."}
+{"file":".trellis/spec/backend/account-admin-list.md","reason":"Regression review for admin account selection, plan-tier filtering, and platform-scoped aliases."}
+{"file":".trellis/spec/backend/index.md","reason":"Backend quality checklist for migration, repository, service, handler, logging, and test changes."}
+{"file":".trellis/spec/frontend/index.md","reason":"Frontend quality checklist for API typing, component state, validation, localization, and admin UI tests."}

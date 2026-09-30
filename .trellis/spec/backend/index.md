@@ -21,6 +21,7 @@ This directory contains guidelines for backend development. Fill in each file wi
 | [Logging Guidelines](./logging-guidelines.md) | Structured logging, log levels | To fill |
 | [Codex Forwarding](./codex-forwarding.md) | Client metadata, socket reuse, and native tool correlation | Documented |
 | [Admin Account List](./account-admin-list.md) | Account table filters, plan_tier vs type, page-size defaults | Documented |
+| [Account Quality Operations](./account-quality-operations.md) | Quality probes, judge outcomes, isolation, restore, and durable audit contracts | Documented |
 
 ## Quality Check
 
