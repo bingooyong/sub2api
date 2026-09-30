@@ -113,3 +113,24 @@ Completed docs/audits/sub2api-fingerprint-findings.zh-CN.md with 19 findings, co
 ### Status
 
 [OK] **Completed**
+
+
+## Session 4: Account quality operations
+
+**Date**: 2026-09-30
+**Task**: Account quality operations
+**Branch**: `dev`
+
+### Summary
+
+Implemented opt-in scheduled account quality probes with independent bounded judge retries, non-mutating ambiguous outcomes, transactional isolation and conflict-aware restore. Added durable redacted operation audit history, admin API/UI, intelligence-test support, migrations, tests, and code-spec documentation; preserved local forwarding identity/fingerprint/WebSocket behavior.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c11317269` | (see git log) |
+
+### Status
+
+[OK] **Completed**
