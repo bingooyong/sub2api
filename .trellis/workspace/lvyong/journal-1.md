@@ -134,3 +134,25 @@ Implemented opt-in scheduled account quality probes with independent bounded jud
 ### Status
 
 [OK] **Completed**
+
+
+## Session 5: Upgrade to v0.2.14-hotfix1
+
+**Date**: 2026-10-08
+**Task**: Upgrade to v0.2.14-hotfix1
+**Branch**: `dev`
+
+### Summary
+
+Merged pinned upstream v0.2.14, preserved local Codex and account operations behavior, fixed Wire generation, added realistic migration backfill coverage, updated frontend expectations, and passed backend/frontend/migration/build verification.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `32f15a78e` | (see git log) |
+| `8986de74e` | (see git log) |
+
+### Status
+
+[OK] **Completed**
