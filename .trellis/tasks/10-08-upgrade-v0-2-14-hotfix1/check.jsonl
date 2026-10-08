@@ -1,0 +1,6 @@
+{"file":".trellis/spec/backend/codex-forwarding.md","reason":"Verify Codex forwarding behavior and final-boundary assertions after merge."}
+{"file":".trellis/spec/backend/account-admin-list.md","reason":"Verify account type and plan-tier behavior remains platform scoped."}
+{"file":".trellis/spec/backend/account-quality-operations.md","reason":"Verify quality operations and isolation behavior remain intact."}
+{"file":".trellis/spec/backend/database-guidelines.md","reason":"Verify migration ordering, idempotency, and compatibility."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Review cross-layer API, configuration, and type consistency."}
+{"file":".trellis/tasks/10-08-upgrade-v0-2-14-hotfix1/research/upstream-v0.2.14.md","reason":"Validate the pinned merge target and complete shared-path review scope."}

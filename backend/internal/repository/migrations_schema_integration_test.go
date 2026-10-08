@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 )
 
@@ -182,6 +183,92 @@ WHERE ns.nspname = 'public'
 
 	// user_allowed_groups: created_at should be timestamptz
 	requireColumn(t, tx, "user_allowed_groups", "created_at", "timestamp with time zone", 0, false)
+}
+
+func TestMigrationsRunner_AppliesLowerNumberedUpstreamMigrationsAfterLocalHigherMigrations(t *testing.T) {
+	ctx := context.Background()
+	upstreamMigrations := []string{
+		"241_add_payment_order_bonus_amount.sql",
+		"241_add_typesafe_platform.sql",
+	}
+	localHigherMigrations := []string{
+		"243_pelican_scheduled_tests.sql",
+		"247_account_quality_ops.sql",
+		"248_account_quality_judgment.sql",
+		"249_account_quality_operation_history.sql",
+	}
+
+	for _, name := range localHigherMigrations {
+		var applied bool
+		require.NoError(t, integrationDB.QueryRowContext(ctx,
+			"SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE filename = $1)", name,
+		).Scan(&applied))
+		require.Truef(t, applied, "expected local migration %s to be applied before the upstream backfill", name)
+	}
+
+	t.Cleanup(func() {
+		_, err := integrationDB.ExecContext(context.Background(),
+			"DELETE FROM schema_migrations WHERE filename = ANY($1)", pq.Array(upstreamMigrations),
+		)
+		require.NoError(t, err)
+		require.NoError(t, ApplyMigrations(context.Background(), integrationDB))
+	})
+
+	// Model an existing v0.2.10-hotfix1 database: local migrations with higher
+	// numbers are recorded, while the two newly imported upstream 241 files are
+	// absent. Restore the platform constraints from migration 238 and drop
+	// bonus_amount so both imported migrations must change the schema rather
+	// than only repair migration bookkeeping.
+	_, err := integrationDB.ExecContext(ctx, "ALTER TABLE payment_orders DROP COLUMN IF EXISTS bonus_amount")
+	require.NoError(t, err)
+	_, err = integrationDB.ExecContext(ctx, `
+		ALTER TABLE user_platform_quotas
+			DROP CONSTRAINT IF EXISTS user_platform_quotas_platform_check;
+		ALTER TABLE user_platform_quotas
+			ADD CONSTRAINT user_platform_quotas_platform_check
+			CHECK (platform IN ('anthropic', 'openai', 'gemini', 'antigravity', 'grok',
+								'kimi', 'zhipu', 'deepseek', 'minimax', 'opencode_go'));
+		ALTER TABLE composite_model_routes
+			DROP CONSTRAINT IF EXISTS composite_model_routes_target_platform_check;
+		ALTER TABLE composite_model_routes
+			ADD CONSTRAINT composite_model_routes_target_platform_check
+			CHECK (target_platform IN ('anthropic', 'openai', 'gemini', 'antigravity', 'grok',
+									  'kimi', 'zhipu', 'deepseek', 'minimax', 'opencode_go'));
+	`)
+	require.NoError(t, err)
+	_, err = integrationDB.ExecContext(ctx,
+		"DELETE FROM schema_migrations WHERE filename = ANY($1)", pq.Array(upstreamMigrations),
+	)
+	require.NoError(t, err)
+
+	require.NoError(t, ApplyMigrations(ctx, integrationDB))
+
+	for _, name := range upstreamMigrations {
+		var applied bool
+		require.NoError(t, integrationDB.QueryRowContext(ctx,
+			"SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE filename = $1)", name,
+		).Scan(&applied))
+		require.Truef(t, applied, "expected late lower-numbered migration %s to be applied", name)
+	}
+	var bonusColumnExists bool
+	require.NoError(t, integrationDB.QueryRowContext(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM information_schema.columns
+			WHERE table_schema = current_schema()
+			  AND table_name = 'payment_orders'
+			  AND column_name = 'bonus_amount'
+		)
+	`).Scan(&bonusColumnExists))
+	require.True(t, bonusColumnExists)
+
+	tx := testTx(t)
+	requireConstraintDefinitionContains(t, tx, "user_platform_quotas", "user_platform_quotas_platform_check", "'typesafe'")
+	requireConstraintDefinitionContains(t, tx, "composite_model_routes", "composite_model_routes_target_platform_check", "'typesafe'")
+
+	// The normal second application must remain a no-op after the late files are
+	// recorded, proving the next application start is idempotent.
+	require.NoError(t, ApplyMigrations(ctx, integrationDB))
 }
 
 func TestMigrationsRunner_AuthIdentityAndPaymentSchemaStayAligned(t *testing.T) {
