@@ -524,6 +524,13 @@ const loadingResults = ref(false)
 const plans = ref<ScheduledTestPlan[]>([])
 const results = ref<ScheduledTestResult[]>([])
 const expandedPlanId = ref<number | null>(null)
+let resultsRequestId = 0
+watch(expandedPlanId, () => {
+  resultsRequestId++
+  results.value = []
+  loadingResults.value = false
+}, { flush: 'sync' })
+onBeforeUnmount(() => { resultsRequestId++ })
 const expandedResultIds = reactive(new Set<number>())
 const showAddForm = ref(false)
 const showDeleteConfirm = ref(false)
@@ -685,16 +692,19 @@ const handleDelete = async () => {
 const expandPlan = async (planId: number) => {
   const accountId = props.accountId
   expandedPlanId.value = planId
+  const requestId = resultsRequestId
   expandedResultIds.clear()
   loadingResults.value = true
   try {
     const data = await adminAPI.scheduledTests.listResults(planId, 20, !props.pelicanConfig)
+    if (requestId !== resultsRequestId) return
     if (alive && props.show && props.accountId === accountId && expandedPlanId.value === planId) { results.value = data; emit('history', data) }
   } catch (error: any) {
+    if (requestId !== resultsRequestId) return
     appStore.showError(error?.message || 'Failed to load results')
     results.value = []
   } finally {
-    loadingResults.value = false
+    if (requestId === resultsRequestId) loadingResults.value = false
   }
 }
 
