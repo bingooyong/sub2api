@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 13
+- **Total Sessions**: 14
 - **Last Active**: 2026-10-23
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~434 | Active |
+| `journal-1.md` | ~470 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 14 | 2026-10-23 | 密文失效自愈上线 + session_hash 诊断增强（23efd173b） | - | `dev` |
 | 13 | 2026-10-23 | 线上验证密文自愈生效并修正根因结论 | - | `dev` |
 | 12 | 2026-10-23 | 沉淀粘性会话与上游错误处理的根因契约 | - | `dev` |
 | 11 | 2026-10-23 | 沉淀 v0.2.18 合并与密文自愈的 code-spec | - | `dev` |

@@ -432,3 +432,39 @@ HTTP 路径的 invalid_encrypted_content 自愈只认 error.code，上游返回 
 ### Next Steps
 
 - 若要区分两种候选根因，需要在 ops_error_logs 里记录 session_hash（当前缺失）
+
+
+## Session 14: 密文失效自愈上线 + session_hash 诊断增强（23efd173b）
+
+**Date**: 2026-10-23
+**Task**: 密文失效自愈上线 + session_hash 诊断增强（23efd173b）
+**Branch**: `dev`
+
+### Summary
+
+把可观测性缺口补上：诊断日志带 session_hash，可与 Redis 粘性绑定对照；同时把 pnpm 11 设置迁入 pnpm-workspace.yaml 修 CI 隐患
+
+### Main Changes
+
+- service: 新增 openAISessionHashContextKey 与 Set/GetOpenAISessionHashToContext
+- handler: 三处生成 session hash 的位置写入 gin context（responses / messages / WS ingress）
+- forward: 400 诊断日志新增 session_hash 字段
+- 新增 frontend/pnpm-workspace.yaml：overrides 与 package.json 逐字一致 + onlyBuiltDependencies
+- spec: 密文 spec 诊断节、粘性会话 spec §7.1 可观测性契约、build-toolchain spec 仓库现状
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] go test ./internal/service/ 全绿（149s）；go test ./internal/handler/ 全绿（41s）
+- [OK] 发布后验证：停服 104 秒、无迁移、前端资源未变、探针请求 200、日志 0 错误
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 若将来再复现密文失效，用诊断日志的 session_hash 对照 redis-cli KEYS 'sticky_session:*' 即可判定是否换过账号
