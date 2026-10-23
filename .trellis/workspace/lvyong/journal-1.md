@@ -289,3 +289,42 @@ HTTP 路径的 invalid_encrypted_content 自愈只认 error.code，上游返回 
 ### Next Steps
 
 - 请用户在带失效密文的会话中重试，用诊断日志确认自愈是否生效
+
+
+## Session 10: 合并上游 v0.2.18 并发布 0.2.18-hotfix1
+
+**Date**: 2026-10-23
+**Task**: 合并上游 v0.2.18 并发布 0.2.18-hotfix1
+**Branch**: `dev`
+
+### Summary
+
+合并上游 45 个提交（含 dompurify 安全升级），适配 Codex 身份定制冲突，迁移 246 影响 0 行，停服 95 秒发布
+
+### Main Changes
+
+- 合并上游 v0.2.17..v0.2.18 的 45 个提交到 v0.2.18-hotfix1 分支
+- 定制适配：上游把默认 Codex 身份由 codex-tui 改为 codex_cli_rs（issue #5198），归一化以 codexIdentityEnforcement 为闸门，只在强制统一路径生效
+- VERSION 定为 0.2.18-hotfix1；迁移 246 审查确认对线上 8 个分组影响 0 行
+- 解决 pnpm 11 构建坑：pnpm.* 设置迁到 pnpm-workspace.yaml，overrides 逐字迁移 + onlyBuiltDependencies 放行 esbuild/vue-demi
+- docs 与 AGENTS.md 更新当前版本、备份路径、manifest、迁移审查结论
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] go test ./internal/service/ -count=1 全绿（150s）
+- [OK] 隔离演练：迁移 300→301、246 已应用、accounts 6859/users 1/keys 7/groups 8 一致
+- [OK] 切换后：停服 95 秒、版本接口 0.2.18-hotfix1、三个 health ok、UI index-BcCu4tlM.js 200、/v1/models 19 个模型
+- [OK] schema_migrations 仅新增 246、同名 checksum 未变、所有业务表 inventory 逐项一致、日志 0 错误
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 请用户在旧会话（带失效密文）重试，验证密文自愈是否生效；必要时用 160 上的诊断日志定位
+- 评估是否关闭 GATEWAY_DISABLE_CODEX_IDENTITY_ENFORCEMENT：上游认定 codex-tui 会被风控分层（server_is_overloaded）
