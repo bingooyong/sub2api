@@ -1,6 +1,8 @@
 package service
 
 import (
+	"encoding/json"
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -132,4 +134,106 @@ func trimOpenAIInvalidEncryptedContentItems(reqBody map[string]any) bool {
 		changed = true
 	}
 	return changed
+}
+
+// openAIInputShapeSummary 概括请求体 input 的结构，用于诊断密文失效问题。
+//
+// 只输出每个 item 的类型，以及是否带 id / 是否带 encrypted_content 字段，
+// **绝不输出密文本身**（密文是敏感数据，且日志会被收集到远端）。
+// 形如：[message(id,enc) reasoning(enc) message(-)]
+func openAIInputShapeSummary(reqBody map[string]any) string {
+	if reqBody == nil {
+		return ""
+	}
+	inputValue, has := reqBody["input"]
+	if !has {
+		return "no-input"
+	}
+	switch input := inputValue.(type) {
+	case []any:
+		parts := make([]string, 0, len(input))
+		for _, raw := range input {
+			item, ok := raw.(map[string]any)
+			if !ok {
+				parts = append(parts, "?")
+				continue
+			}
+			itemType, _ := item["type"].(string)
+			if strings.TrimSpace(itemType) == "" {
+				itemType = "?"
+			}
+			_, hasID := item["id"]
+			_, hasEnc := item["encrypted_content"]
+			parts = append(parts, fmt.Sprintf("%s(id=%t,enc=%t)", itemType, hasID, hasEnc))
+		}
+		return "[" + strings.Join(parts, " ") + "]"
+	case string:
+		return "string"
+	default:
+		return "other"
+	}
+}
+
+// openAIInputShapeSummaryFromBytes 从原始请求体字节概括 input 结构（诊断用）。
+func openAIInputShapeSummaryFromBytes(raw []byte) string {
+	if len(raw) == 0 {
+		return ""
+	}
+	decoded := map[string]any{}
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		return "unparsable"
+	}
+	return openAIInputShapeSummary(decoded)
+}
+
+// stripOpenAIAssistantHistoryForInvalidEncryptedContent 是密文失效的最后一道兜底：
+// 当上游坚持认为历史里的密文解不开、而前两级自愈（剥 reasoning/compaction 密文、
+// 剥 message 密文）都无从下手时，丢弃 assistant 侧的历史，只保留 user 消息与
+// 工具调用/工具输出。
+//
+// 代价是模型看不到之前的 assistant 回答与加密推理；收益是请求能成功、对话能继续。
+// 对话卡死（客户端反复重放同一份历史）比丢一段历史更糟，所以这个取舍是划算的。
+//
+// 只在「确认是密文失效错误」时调用，不影响任何其它 400。
+func stripOpenAIAssistantHistoryForInvalidEncryptedContent(reqBody map[string]any) bool {
+	if reqBody == nil {
+		return false
+	}
+	inputValue, has := reqBody["input"]
+	if !has {
+		return false
+	}
+	items, ok := inputValue.([]any)
+	if !ok {
+		return false
+	}
+	kept := make([]any, 0, len(items))
+	changed := false
+	for _, raw := range items {
+		item, ok := raw.(map[string]any)
+		if !ok {
+			kept = append(kept, raw)
+			continue
+		}
+		itemType := strings.TrimSpace(strings.ToLower(firstNonEmptyString(item["type"])))
+		role := strings.TrimSpace(strings.ToLower(firstNonEmptyString(item["role"])))
+		switch {
+		case itemType == "reasoning",
+			itemType == "compaction",
+			itemType == "compaction_summary",
+			role == "assistant":
+			changed = true
+			continue
+		}
+		kept = append(kept, raw)
+	}
+	if !changed {
+		return false
+	}
+	if len(kept) == 0 {
+		delete(reqBody, "input")
+		return true
+	}
+	reqBody["input"] = kept
+	return true
 }

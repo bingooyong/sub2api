@@ -355,3 +355,66 @@ func TestClassifyOpenAIWSErrorEventFromRaw_InvalidEncryptedContentSharedWithHTTP
 	reason, matched := classifyOpenAIWSErrorEventFromRaw("invalid_request_error", "invalid_request_error", "Invalid signature")
 	require.False(t, matched || reason == "invalid_encrypted_content", "无关签名错误不得归类为密文失效")
 }
+
+// TestOpenAIGatewayService_Forward_InvalidEncryptedContentDropsAssistantHistoryAsLastResort
+// 最后一道兜底：前三级自愈都做不了时，丢弃 assistant 侧历史，保留 user 消息与工具输出。
+// 对话卡死（客户端反复重放同一份历史）比丢一段 assistant 历史更糟。
+func TestOpenAIGatewayService_Forward_InvalidEncryptedContentDropsAssistantHistoryAsLastResort(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	serverSideBody := `{"error":{"code":"invalid_encrypted_content","message":"The encrypted content for item amsg_zzz could not be verified. Reason: encrypted content hydration failed: Encrypted content could not be decrypted or parsed.","param":"input","type":"invalid_request_error"}}`
+	upstream := &httpUpstreamRecorder{responses: []*http.Response{
+		{
+			StatusCode: http.StatusBadRequest,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(serverSideBody)),
+		},
+		{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(`{"id":"resp_recovered","usage":{"input_tokens":1,"output_tokens":2}}`)),
+		},
+	}}
+	cfg := &config.Config{}
+	cfg.Security.URLAllowlist.Enabled = false
+	svc := &OpenAIGatewayService{cfg: cfg, httpUpstream: upstream}
+	account := &Account{ID: 6854, Name: "oauth-codex", Platform: PlatformOpenAI, Type: AccountTypeOAuth,
+		Concurrency: 1, Credentials: map[string]any{
+			"access_token":       "test-token",
+			"chatgpt_account_id": "test-account",
+		}}
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
+	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
+
+	body := `{"model":"gpt-5.1","stream":false,"input":[{"type":"reasoning","id":"rs_1","summary":[{"type":"summary_text","text":"old"}]},{"type":"message","id":"amsg_zzz","role":"assistant","content":[{"type":"output_text","text":"old answer"}]},{"type":"message","role":"user","content":[{"type":"input_text","text":"hello"}]},{"type":"function_call_output","call_id":"call_1","output":"result"}]}`
+	result, err := svc.Forward(context.Background(), c, account, []byte(body))
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, upstream.bodies, 2, "最后一道兜底也必须重试一次")
+	require.Equal(t, "reasoning", gjson.GetBytes(upstream.bodies[0], "input.0.type").String(), "首次请求应保留原历史")
+	// 重试后：reasoning 与 assistant message 被丢弃，user 消息与工具输出保留
+	types := []string{}
+	gjson.GetBytes(upstream.bodies[1], "input").ForEach(func(_, v gjson.Result) bool {
+		types = append(types, v.Get("type").String())
+		return true
+	})
+	require.NotContains(t, types, "reasoning", "兜底必须丢弃 reasoning 历史")
+	// codex transform 本身就会把 function_call_output 规范化掉（首次请求体里已不存在），
+	// 因此这里只断言 user 消息被保留、assistant 侧历史被丢弃。
+	require.Equal(t, []string{"message"}, types, "只应保留 user 消息")
+	require.Equal(t, "hello", gjson.GetBytes(upstream.bodies[1], "input.0.content.0.text").String(), "user 消息必须保留")
+	require.Equal(t, "user", gjson.GetBytes(upstream.bodies[1], "input.0.role").String())
+}
+
+// TestStripOpenAIAssistantHistoryForInvalidEncryptedContent_NoAssistantHistoryIsNoop
+// 没有 assistant 侧历史时不应改动请求体。
+func TestStripOpenAIAssistantHistoryForInvalidEncryptedContent_NoAssistantHistoryIsNoop(t *testing.T) {
+	body := map[string]any{
+		"input": []any{
+			map[string]any{"type": "message", "role": "user", "content": "hi"},
+			map[string]any{"type": "function_call_output", "call_id": "c1", "output": "r"},
+		},
+	}
+	require.False(t, stripOpenAIAssistantHistoryForInvalidEncryptedContent(body))
+	require.Len(t, body["input"], 2)
+}

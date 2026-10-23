@@ -526,6 +526,24 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 	body := s.readUpstreamErrorBody(resp)
 	body = s.redactAgentIdentitySensitiveBody(ctx, account, body)
 
+	// 诊断：所有走到这里的 400 都要能看出密文失效判定结果。
+	// 密文失效错误必须被上游转发层识别并自愈（剥掉失效密文后重试一次），
+	// 否则 400 会原样回客户端，客户端重放同一份历史 → 对话卡死。
+	// 这条日志用于区分「判定落空」与「走了别的错误出口」。
+	if resp.StatusCode == http.StatusBadRequest && account != nil {
+		diagCode := extractUpstreamErrorCode(body)
+		diagMsg := strings.TrimSpace(extractUpstreamErrorMessage(body))
+		logger.LegacyPrintf(
+			"service.openai_gateway",
+			"[OpenAI] upstream 400 reached handleErrorResponse (account: %s, upstream_code: %q, invalid_encrypted: %t, input_shape: %s, msg: %s)",
+			account.Name,
+			diagCode,
+			isOpenAIInvalidEncryptedContentUpstreamError(diagCode, diagMsg),
+			openAIInputShapeSummaryFromBytes(requestBody),
+			truncateString(diagMsg, 200),
+		)
+	}
+
 	// cyber_policy 硬阻断：透传上游原始错误体给客户端（不重包成通用 502），不冷却账号。
 	// 当前请求恒透传（需求1）；标记供 handler 事后写风控/邮件。400 cyber 不可 failover
 	// （shouldFailoverUpstreamError(400)=false），故走到此处即可安全早返回。

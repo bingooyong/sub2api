@@ -1111,6 +1111,15 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			respBody = s.redactAgentIdentitySensitiveBody(ctx, account, respBody)
 			resp.Body = io.NopCloser(bytes.NewReader(respBody))
 			invalidEncryptedContentError := isOpenAIInvalidEncryptedContentUpstreamError(upstreamCode, upstreamMsg)
+			if resp.StatusCode == http.StatusBadRequest {
+				// 诊断：区分「判定落空」与「走的不是这条路径」，并记录出站 input 的结构
+				// 摘要（只含类型/有无 id/有无密文，绝不含密文本身）。
+				shape := ""
+				if diagBody, decodeErr := ensureReqBody(); decodeErr == nil {
+					shape = openAIInputShapeSummary(diagBody)
+				}
+				logger.LegacyPrintf("service.openai_gateway", "[OpenAI] upstream 400 in forward loop (account: %s, upstream_code: %q, invalid_encrypted: %t, input_shape: %s, msg: %s)", account.Name, upstreamCode, invalidEncryptedContentError, shape, truncateString(upstreamMsg, 200))
+			}
 			if !httpInvalidEncryptedContentRetryTried && resp.StatusCode == http.StatusBadRequest && invalidEncryptedContentError {
 				decoded, decodeErr := ensureReqBody()
 				if decodeErr != nil {
@@ -1150,7 +1159,14 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 						droppedPreviousResponseID = true
 					}
 				}
-				if trimmedEncryptedItems || strippedInvalidItemID || droppedPreviousResponseID {
+				// 最后一道兜底：前三级都做不了时，丢弃 assistant 侧历史。
+				// 代价是模型看不到之前的 assistant 回答与加密推理；收益是请求能成功。
+				// 对话卡死（客户端反复重放同一份历史）比丢一段历史更糟。
+				droppedAssistantHistory := false
+				if !trimmedEncryptedItems && !strippedInvalidItemID && !droppedPreviousResponseID {
+					droppedAssistantHistory = stripOpenAIAssistantHistoryForInvalidEncryptedContent(decoded)
+				}
+				if trimmedEncryptedItems || strippedInvalidItemID || droppedPreviousResponseID || droppedAssistantHistory {
 					body, err = marshalOpenAIUpstreamJSON(decoded)
 					if err != nil {
 						return nil, fmt.Errorf("serialize invalid_encrypted_content retry body: %w", err)
@@ -1163,7 +1179,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 					}
 					httpInvalidEncryptedContentRetryTried = true
 					rejectedFieldRetryState.remember(body)
-					logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Retrying non-WSv2 request once after invalid_encrypted_content (account: %s, upstream_code: %s, invalid_item_id: %s, trimmed_encrypted_items: %t, stripped_invalid_item_id: %t, dropped_previous_response_id: %t)", account.Name, upstreamCode, invalidItemID, trimmedEncryptedItems, strippedInvalidItemID, droppedPreviousResponseID)
+					logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Retrying non-WSv2 request once after invalid_encrypted_content (account: %s, upstream_code: %s, invalid_item_id: %s, trimmed_encrypted_items: %t, stripped_invalid_item_id: %t, dropped_previous_response_id: %t, dropped_assistant_history: %t)", account.Name, upstreamCode, invalidItemID, trimmedEncryptedItems, strippedInvalidItemID, droppedPreviousResponseID, droppedAssistantHistory)
 					continue
 				}
 				logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Skip non-WSv2 invalid_encrypted_content retry because encrypted reasoning items are missing (account: %s, upstream_code: %s, invalid_item_id: %s)", account.Name, upstreamCode, invalidItemID)

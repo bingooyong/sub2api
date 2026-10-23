@@ -106,14 +106,19 @@ HTTP 入站路径与 WSv2 路径的**判定**必须同源。历史上两条路�
 3. **断开续链**（丢 `previous_response_id`）：仅在既无密文可剥、也无法从错误文案
    定位到失效 item 时使用，且要求请求体不含 `function_call_output`（含工具输出时
    锚点是工具续链依据，不能丢）。
+4. **丢弃 assistant 侧历史**（最后一道兜底）：前三级都做不了时，删除 input 中的
+   `reasoning` / `compaction` / `compaction_summary` / `role=assistant` 项，保留 user
+   消息与工具调用/工具输出。代价是模型看不到之前的 assistant 回答与加密推理；
+   收益是请求能成功、对话能继续。**对话卡死（客户端反复重放同一份历史）比丢一段
+   历史更糟**，所以这个取舍是划算的。只在确认是密文失效错误时触发。
    > 注意：codex OAuth 路径的 transform 会剥掉 `previous_response_id` 与 item 的
    > `id`，所以这一步在 codex 路径上通常不适用；apikey 路径保留锚点。
    > 剥掉 item 的 `id`（`stripOpenAIInvalidEncryptedContentItemID`）同理：两条路径的
    > transform 都会剥 id，该动作通常不生效，仅作兜底。
 
-4. 记录 lineage（`markOpenAIWSInvalidEncryptedContentLineage`），使**后续 turn** 在进场时
+5. 记录 lineage（`markOpenAIWSInvalidEncryptedContentLineage`），使**后续 turn** 在进场时
    就被预剥离，不再重复触发上游拒绝。
-5. **只重试一次**：`httpInvalidEncryptedContentRetryTried` 标志位保证上限。
+6. **只重试一次**：`httpInvalidEncryptedContentRetryTried` 标志位保证上限。
    第二次仍失败 → 错误回客户端，**不得形成重试风暴**。
 
 #### 3.4 剥离后的语义边界
