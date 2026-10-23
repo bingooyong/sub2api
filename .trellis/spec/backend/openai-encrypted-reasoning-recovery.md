@@ -301,9 +301,17 @@ body, err = marshalOpenAIUpstreamJSON(decoded) // decoded 只被剥了失效密�
 | 单元/集成测试（`openai_invalid_encrypted_content_test.go`） | 通过：判定表驱动、HTTP 集成、WS 一致性、三级恢复动作、终极兜底 |
 | `go test ./internal/service/ -count=1` | 全绿（150s） |
 | 隔离演练 | 通过：镜像正常启动、schema 加载正常 |
-| 生产端到端（带失效密文的旧会话重试） | **待确认** —— 已发布 `0.2.18-hotfix1`（含本修复），但尚未拿到用户在旧会话中的复现结果 |
+| 生产端到端（带失效密文的旧会话重试） | **已验证生效**（2026-10-23）：最后一次密文错误在 13:28 UTC；此后同一会话持续重试，13:29–14:29 期间 **19 次请求全部成功、0 次密文错误**；`0.2.18-hotfix1`（14:29:47 UTC 启动）之后同样 0 错误 |
 
-若生产仍然复现，160 上的诊断日志会直接给出答案：
+**生产时间线**（2026-10-23，北京时间）：
+
+| 时刻 | 账号 | 错误形态 | 日志特征 |
+| --- | --- | --- | --- |
+| 14:57–15:09 | 6642 (apikey) | `gAAA...3WpB could not be verified` | 多条带 `Recovered upstream error` 前缀 → **自愈已触发但重试后仍失败**；15:09 那条无前缀 → **判定落空，完全没触发**（`code=null`） |
+| 19:47 / 20:47 / 21:28 | 6854 (oauth) | `for item amsg_... hydration failed` | **全部无 `Recovered` 前缀** → 自愈完全没触发（message 密文 + 判定落空） |
+| 21:43–22:43 | 6854 | — | 连续 19+ 次成功，**再无密文错误** |
+
+若将来仍然复现，160 上的诊断日志会直接给出答案：
 
 ```text
 [OpenAI] upstream 400 in forward loop (account: ..., upstream_code: "...", invalid_encrypted: true|false, outbound: keys=..., input=[...], msg: ...)

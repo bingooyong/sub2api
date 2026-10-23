@@ -172,17 +172,40 @@ Correct: preserve the binding when the account is expected to recover
 req.PreserveStickyBinding = true
 ```
 
-### 8. Production evidence (2026-10-23) and what is still unverified
+### 8. Production evidence (2026-10-23)
 
-Observed on 160: encrypted-content failures arrived on OAuth account 6854 while
-its 5-hour Codex quota was exhausted (`codex_5h_used_percent = 100`) and on
-API-key account 6642 with the ciphertext-prefix form. The failures cluster in
-the hours around quota exhaustion, which is consistent with contract 3
-("quota-exhausted account is no longer schedulable → binding dropped → session
-moves → ciphertext dies").
+**Sticky sessions do work on 160.** Measured directly against the live Redis:
 
-**Not yet verified**: a direct observation that the failing request's session
-hash was bound to a *different* account immediately before the failure. The
-chain above is the mechanism, not a measured proof. The remaining check is to
-correlate `session_hash` bindings in the scheduler's store with the account ids
-seen in `ops_error_logs` for the same `client_request_id`.
+- Keys are `sticky_session:{groupID}:{sessionHash}`; the session hash is
+  `openai:` + xxhash64 (16 hex chars, current format) **or** `openai:` +
+  sha256 (64 hex chars, legacy format — both formats are written, see
+  `SessionHashDualWriteOld`).
+- Observed bindings on 160 mapped to real account ids (e.g. group 8 →
+  6854, group 4 → 6847), with TTLs counting down from the 3600 s default.
+- A probe request carrying a `prompt_cache_key` **created a new binding**
+  (`sticky_session:4:openai:<xxhash>` → the account that served it), proving
+  the write path works for that session signal.
+
+**Observability trap (cost a wrong conclusion once):** `redis-cli --scan`
+returned **empty** on this deployment even though `dbsize` reported 6456 keys
+and the keys were really there. Only `redis-cli KEYS "sticky_session:*"` listed
+them. Always use `KEYS` (or `SCAN` with a verified cursor) when auditing
+sticky bindings; never conclude "no bindings exist" from an empty `--scan`.
+
+**Remaining open question.** The encrypted-content failures on 160 (OAuth
+account 6854, `for item amsg_... hydration failed`) all landed on 6854
+itself, and the user's session was bound to 6854 at observation time. So the
+mechanism in contract 3-5 explains *how* a session can end up on an account
+that cannot decrypt its ciphertext, but this particular incident was **not**
+observed to involve an account switch — the ciphertext was simply not
+decryptable by 6854. The two candidate root causes remain open:
+
+1. the ciphertext was issued by a different account earlier in the session and
+   the session moved accounts (sticky binding dropped) before the failure; or
+2. the issuing account's key was rotated / the upstream re-issued the
+   ciphertext under a new key, so even the same account can no longer decrypt
+   it.
+
+Distinguishing them needs the session hash of the failing request, which is
+not stored in `ops_error_logs`. The self-healing path (strip the ciphertext /
+drop the anchor) addresses both.
