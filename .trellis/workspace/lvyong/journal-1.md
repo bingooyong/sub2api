@@ -362,3 +362,38 @@ HTTP 路径的 invalid_encrypted_content 自愈只认 error.code，上游返回 
 ### Next Steps
 
 - 把 pnpm-workspace.yaml 迁移提交进仓库（当前只是构建时在 staging 临时创建）
+
+
+## Session 12: 沉淀粘性会话与上游错误处理的根因契约
+
+**Date**: 2026-10-23
+**Task**: 沉淀粘性会话与上游错误处理的根因契约
+**Branch**: `dev`
+
+### Summary
+
+查明密文失效的根因链（粘性绑定被清除→换账号→密文必死），并补齐上游错误分类与验证状态契约
+
+### Main Changes
+
+- 新增 backend/openai-sticky-session-encrypted-content.md：粘性绑定生命周期与 9 类清除条件
+- 新增 backend/openai-upstream-error-handling.md：多信号错误分类、重试预算、ops 事件语义
+- openai-encrypted-reasoning-recovery.md 新增「当前验证状态」章节，区分已验证与待确认
+- error-handling.md 从空白骨架补出上游错误处理要点与常见错误（To fill → Partial）
+- backend/index.md 与 vutl ops/index.md 登记新 spec 并补指针
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] 新 spec 引用的全部函数与常量已逐一确认存在
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 验证粘性会话假设：把 scheduler 的 session_hash 绑定与 ops_error_logs 的 account_id 按 client_request_id 关联

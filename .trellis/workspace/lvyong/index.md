@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 11
+- **Total Sessions**: 12
 - **Last Active**: 2026-10-23
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~364 | Active |
+| `journal-1.md` | ~399 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 12 | 2026-10-23 | 沉淀粘性会话与上游错误处理的根因契约 | - | `dev` |
 | 11 | 2026-10-23 | 沉淀 v0.2.18 合并与密文自愈的 code-spec | - | `dev` |
 | 10 | 2026-10-23 | 合并上游 v0.2.18 并发布 0.2.18-hotfix1 | - | `dev` |
 | 9 | 2026-10-23 | 加密推理密文自愈：补兜底与诊断日志，发版 5d30c3087 | - | `dev` |
