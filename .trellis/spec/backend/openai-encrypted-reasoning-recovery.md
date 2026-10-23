@@ -88,29 +88,45 @@ HTTP 入站路径与 WSv2 路径的**判定**必须同源。历史上两条路�
 #### 3.3 HTTP 路径的恢复动作
 
 命中后在**同一账号**上重试**一次**（不切账号：400 是确定性请求错误，换账号只会把
-「密文来自旧账号」的问题原样复制到新账号）：
+「密文来自旧账号」的问题原样复制到新账号）。恢复动作有三种，互相独立，任一成功即可重试：
 
-1. `trimOpenAIEncryptedReasoningItems` 剥离失效密文：
+1. **剥 reasoning / compaction 的密文**（`trimOpenAIEncryptedReasoningItems`）：
    - `reasoning` 项：删掉 `encrypted_content` 字段，**保留** `id` / `summary` / 其他字段；
    - `compaction` / `compaction_summary` 项：**整项删除**（这两类必须带密文存在，
      缺密文上游直接 400）；
    - `input` 中的普通消息、工具调用、函数输出：**原样保留**。
-2. `previous_response_id`：**保持不动**。HTTP 路径下它是 API-key 客户端的续链锚点，
-   剥离失效密文不影响它继续有效。既有测试
-   `TestOpenAIGatewayService_Forward_HTTPIngressRetriesInvalidEncryptedContentOnce`
-   明确断言 "encrypted-content retry must preserve API-key continuation"。
-   > WS 路径丢弃锚点是 WS 特有语义（连接复用 + session 锚点），**不要**照搬到 HTTP 路径。
-3. 记录 lineage（`markOpenAIWSInvalidEncryptedContentLineage`），使**后续 turn** 在进场时
+2. **剥 message 的密文**（`trimOpenAIInvalidEncryptedContentItems`）：
+   - `message` 项删掉 `encrypted_content` 字段，**保留** `id` 与可见内容。
+   - **这一步不能省**：OpenAI Responses 在 `store=false` 的回放场景下会给
+     **assistant message** 也带上 `encrypted_content`，其失效时上游报的是
+     `The encrypted content for item amsg_xxx could not be verified. Reason:
+     encrypted content hydration failed: ...`。只剥 reasoning 会让这类错误
+     「判定命中但无可剥之物」→ 放弃自愈 → 400 原样回客户端 → 对话卡死。
+     （2026-10-23 生产事故的真实形态。）
+3. **断开续链**（丢 `previous_response_id`）：仅在既无密文可剥、也无法从错误文案
+   定位到失效 item 时使用，且要求请求体不含 `function_call_output`（含工具输出时
+   锚点是工具续链依据，不能丢）。
+   > 注意：codex OAuth 路径的 transform 会剥掉 `previous_response_id` 与 item 的
+   > `id`，所以这一步在 codex 路径上通常不适用；apikey 路径保留锚点。
+   > 剥掉 item 的 `id`（`stripOpenAIInvalidEncryptedContentItemID`）同理：两条路径的
+   > transform 都会剥 id，该动作通常不生效，仅作兜底。
+
+4. 记录 lineage（`markOpenAIWSInvalidEncryptedContentLineage`），使**后续 turn** 在进场时
    就被预剥离，不再重复触发上游拒绝。
-4. **只重试一次**：`httpInvalidEncryptedContentRetryTried` 标志位保证上限。
+5. **只重试一次**：`httpInvalidEncryptedContentRetryTried` 标志位保证上限。
    第二次仍失败 → 错误回客户端，**不得形成重试风暴**。
 
 #### 3.4 剥离后的语义边界
 
 被剥掉的是**上游已经拒绝的**密文——它不可能被保留。剥离后：
 
-- 普通对话上下文完整（消息、工具调用、函数输出都在）；
-- 上一轮的**加密推理**内容丢失，模型读不到这部分上下文；
+- 普通对话上下文完整（消息正文、工具调用、函数输出都在）；
+- 上一轮的**加密推理/加密消息**内容丢失，模型读不到这部分上下文；
+- `previous_response_id` 在「剥密文」路径下**保留**（HTTP 路径下它是 API-key 客户端的
+  续链锚点，剥离失效密文不影响它继续有效）。既有测试
+  `TestOpenAIGatewayService_Forward_HTTPIngressRetriesInvalidEncryptedContentOnce`
+  明确断言 "encrypted-content retry must preserve API-key continuation"。
+  > WS 路径丢弃锚点是 WS 特有语义（连接复用 + session 锚点），**不要**照搬到 HTTP 路径。
 - 客户端协议形状不变，错误仍在「重试也失败」时照常返回。
 
 ### 4. Validation & Error Matrix
@@ -122,11 +138,14 @@ HTTP 入站路径与 WSv2 路径的**判定**必须同源。历史上两条路�
 | 上游 400，`code=thinking_signature_invalid` + 密文失效文案 | 命中（既有行为，不回归） |
 | 上游 400，文案为 `Invalid signature` | **不**命中，不重试 |
 | 上游 400，普通错误（如 `bad request`） | **不**命中，不重试 |
-| 命中但请求体里没有任何加密推理项 | 记 `Skip ... because encrypted reasoning items are missing`，**不**重试 |
+| 命中且 `input` 里有 `reasoning` 项带 `encrypted_content` | 删该字段，保留 `id` / `summary` |
+| 命中且 `input` 里有 `message` 项带 `encrypted_content` | 删该字段，保留 `id` / 正文（**最常见的真实形态**） |
+| 命中且 `input` 里有 `compaction` 项 | 整项删除（带密文的 compaction 不能半剥） |
+| 命中但三类密文都不可剥、且无锚点可丢 | 记 `Skip ... because encrypted reasoning items are missing`，**不**重试 |
 | 重试后再次 400 | 终止，回客户端，不第三次重试 |
-| 命中且 `previous_response_id` 存在 | **保留**该字段（HTTP 续链契约） |
+| 命中且走了「剥密文」路径 | **保留** `previous_response_id`（HTTP 续链契约） |
+| 命中且走了「丢锚点」路径 | 要求请求体不含 `function_call_output` |
 | 命中且含 `function_call_output` | 保留工具输出与锚点 |
-| 命中且含 `compaction` 项 | 整项删除（带密文的 compaction 不能半剥） |
 
 ### 5. Good/Base/Bad Cases
 
@@ -150,8 +169,12 @@ HTTP 入站路径与 WSv2 路径的**判定**必须同源。历史上两条路�
 - **HTTP 集成**：
   - 生产形态 `code=null` → 上游被调用 **2 次**；第二次请求体无 `encrypted_content`；
     摘要、普通消息、工具输出原样保留；`previous_response_id` 保留
+  - **message 密文形态**（`amsg_` 前缀 + `hydration failed`）→ 上游被调用 **2 次**；
+    第二次请求体中该 message 的 `encrypted_content` 被删，`id` 与正文保留
   - 无关 400 → 上游只被调用 **1 次**
   - 连续两次 400 → 上游只被调用 **2 次**（不风暴）
+  - apikey 路径上无密文可剥时 → 丢 `previous_response_id` 后重试
+  - 含 `function_call_output` → 锚点保留
 - **路径一致性**：`classifyOpenAIWSErrorEventFromRaw` 对生产形态（`code` 为空/ `null`）
   返回 `invalid_encrypted_content`，与 HTTP 判定结论一致。
 - **回归**：`go test ./internal/service/ -count=1` 全绿，尤其
@@ -175,6 +198,21 @@ Correct：判定与错误码解耦，码与文案双通道，且两条路径共�
 invalid := isOpenAIInvalidEncryptedContentUpstreamError(upstreamCode, upstreamMsg)
 ```
 
+Wrong：只剥 reasoning 的密文
+
+```go
+// message 项的 encrypted_content 也会让上游 hydration 失败
+if trimOpenAIEncryptedReasoningItems(decoded) { ... }   // 对 message 密文返回 false
+// → 判定命中但无可剥之物 → 放弃自愈 → 400 回客户端 → 对话卡死
+```
+
+Correct：reasoning 与 message 两类密文都要剥
+
+```go
+trimmed := trimOpenAIEncryptedReasoningItems(decoded)
+trimmed = trimOpenAIInvalidEncryptedContentItems(decoded) || trimmed
+```
+
 Wrong：把 WS 的恢复动作照搬到 HTTP 路径
 
 ```go
@@ -188,7 +226,7 @@ if previousResponseID != "" && !hasFunctionCallOutput {
 Correct：判定同源，恢复动作各按各的路径语义
 
 ```go
-// HTTP 路径：锚点保留
+// HTTP 路径：剥密文时锚点保留
 body, err = marshalOpenAIUpstreamJSON(decoded) // decoded 只被剥了失效密文
 ```
 
