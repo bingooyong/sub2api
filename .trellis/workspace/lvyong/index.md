@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 5
-- **Last Active**: 2026-10-08
+- **Total Sessions**: 6
+- **Last Active**: 2026-10-23
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~158 | Active |
+| `journal-1.md` | ~180 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 6 | 2026-10-23 | Upgrade to v0.2.17-hotfix1 | `8934e084b`, `cac4d290e` | `dev` |
 | 5 | 2026-10-08 | Upgrade to v0.2.14-hotfix1 | `32f15a78e`, `8986de74e` | `dev` |
 | 4 | 2026-09-30 | Account quality operations | `c11317269` | `dev` |
 | 3 | 2026-09-13 | Release v0.2.4-hotfix1: Codex 身份保持 + 中文指纹参考 | `feeeae916`, `06bb4df4c` | `dev` |

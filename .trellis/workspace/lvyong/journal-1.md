@@ -156,3 +156,25 @@ Merged pinned upstream v0.2.14, preserved local Codex and account operations beh
 ### Status
 
 [OK] **Completed**
+
+
+## Session 6: Upgrade to v0.2.17-hotfix1
+
+**Date**: 2026-10-23
+**Task**: Upgrade to v0.2.17-hotfix1
+**Branch**: `dev`
+
+### Summary
+
+Merged upstream v0.2.17, preserved local Codex identity and account quality operations, verified encrypted reasoning recovery for server 160 errors, passed full backend tests/build, and recorded frontend/live database environment gaps.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8934e084b` | (see git log) |
+| `cac4d290e` | (see git log) |
+
+### Status
+
+[OK] **Completed**
