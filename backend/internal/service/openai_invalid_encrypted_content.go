@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -162,9 +163,13 @@ func openAIInputShapeSummary(reqBody map[string]any) string {
 			if strings.TrimSpace(itemType) == "" {
 				itemType = "?"
 			}
-			_, hasID := item["id"]
+			idValue, _ := item["id"].(string)
+			if len(idValue) > 24 {
+				idValue = idValue[:24] + "…"
+			}
+			role, _ := item["role"].(string)
 			_, hasEnc := item["encrypted_content"]
-			parts = append(parts, fmt.Sprintf("%s(id=%t,enc=%t)", itemType, hasID, hasEnc))
+			parts = append(parts, fmt.Sprintf("%s(role=%s,id=%s,enc=%t)", itemType, role, idValue, hasEnc))
 		}
 		return "[" + strings.Join(parts, " ") + "]"
 	case string:
@@ -236,4 +241,92 @@ func stripOpenAIAssistantHistoryForInvalidEncryptedContent(reqBody map[string]an
 	}
 	reqBody["input"] = kept
 	return true
+}
+
+// trimOpenAIInputToLastUserMessage 是密文失效自愈的终极兜底：把 input 裁剪成
+// 「只保留最后一条 user 消息」。
+//
+// 适用场景：上游坚持认为历史里的密文解不开，而前面的自愈动作（剥 reasoning 密文、
+// 剥 message 密文、丢 previous_response_id、删 assistant 侧历史）都无从下手——
+// 典型是客户端回放的 item 不带 role、也不带 encrypted_content，但上游仍按某个
+// 服务端 id 去 hydrate。
+//
+// 代价：模型几乎看不到之前的对话上下文。收益：请求一定发得出去，对话不会卡死。
+// 客户端下一轮会把完整历史再带回来，届时若上游仍失败会再次触发本兜底。
+func trimOpenAIInputToLastUserMessage(reqBody map[string]any) bool {
+	if reqBody == nil {
+		return false
+	}
+	inputValue, has := reqBody["input"]
+	if !has {
+		return false
+	}
+	items, ok := inputValue.([]any)
+	if !ok || len(items) == 0 {
+		return false
+	}
+	lastUserIndex := -1
+	for i := len(items) - 1; i >= 0; i-- {
+		item, ok := items[i].(map[string]any)
+		if !ok {
+			continue
+		}
+		role := strings.TrimSpace(strings.ToLower(firstNonEmptyString(item["role"])))
+		itemType := strings.TrimSpace(strings.ToLower(firstNonEmptyString(item["type"])))
+		if role == "user" || (itemType == "message" && role == "") {
+			lastUserIndex = i
+			break
+		}
+	}
+	if lastUserIndex < 0 {
+		return false
+	}
+	kept := make([]any, 0, 1)
+	kept = append(kept, items[lastUserIndex])
+	if len(kept) == len(items) {
+		return false
+	}
+	reqBody["input"] = kept
+	return true
+}
+
+// openAIOutboundBodySummary 概括**出站**请求体：顶层 key 列表 + 关键续链字段 +
+// input 的结构摘要。绝不输出 instructions 正文与用户对话内容。
+//
+// 诊断要点：必须看**出站** body。客户端原始 body 会被 codex transform 改写
+// （剥掉 item 的 id、剥掉 reasoning 项），用原始 body 判断会得出错误结论。
+func openAIOutboundBodySummary(body []byte) string {
+	if len(body) == 0 {
+		return "empty"
+	}
+	decoded := map[string]any{}
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		return "unparsable"
+	}
+	keys := make([]string, 0, len(decoded))
+	for key := range decoded {
+		if key == "instructions" {
+			continue
+		}
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	parts := []string{"keys=" + strings.Join(keys, ",")}
+	for _, key := range []string{"previous_response_id", "conversation", "include", "store", "reasoning", "model"} {
+		value, ok := decoded[key]
+		if !ok {
+			continue
+		}
+		raw, err := json.Marshal(value)
+		if err != nil {
+			continue
+		}
+		text := string(raw)
+		if len(text) > 120 {
+			text = text[:120] + "…"
+		}
+		parts = append(parts, key+"="+text)
+	}
+	parts = append(parts, "input="+openAIInputShapeSummary(decoded))
+	return strings.Join(parts, " ")
 }

@@ -418,3 +418,44 @@ func TestStripOpenAIAssistantHistoryForInvalidEncryptedContent_NoAssistantHistor
 	require.False(t, stripOpenAIAssistantHistoryForInvalidEncryptedContent(body))
 	require.Len(t, body["input"], 2)
 }
+
+// TestOpenAIGatewayService_Forward_InvalidEncryptedContentTrimsToLastUserMessage
+// 终极兜底：连 assistant 侧历史都识别不出来时（客户端回放的 item 不带 role），
+// 把 input 裁剪成只保留最后一条 user 消息，保证请求发得出去。
+func TestOpenAIGatewayService_Forward_InvalidEncryptedContentTrimsToLastUserMessage(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	serverSideBody := `{"error":{"code":"invalid_encrypted_content","message":"The encrypted content for item amsg_x could not be verified. Reason: encrypted content hydration failed: Encrypted content could not be decrypted or parsed.","param":"input","type":"invalid_request_error"}}`
+	upstream := &httpUpstreamRecorder{responses: []*http.Response{
+		{
+			StatusCode: http.StatusBadRequest,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(serverSideBody)),
+		},
+		{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(`{"id":"resp_recovered","usage":{"input_tokens":1,"output_tokens":2}}`)),
+		},
+	}}
+	cfg := &config.Config{}
+	cfg.Security.URLAllowlist.Enabled = false
+	svc := &OpenAIGatewayService{cfg: cfg, httpUpstream: upstream}
+	account := &Account{ID: 6642, Name: "apikey", Platform: PlatformOpenAI, Type: AccountTypeAPIKey,
+		Concurrency: 1, Credentials: map[string]any{
+			"api_key":  "sk-test",
+			"base_url": "https://example.com",
+		},
+		Extra: map[string]any{"use_responses_api": true}}
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
+	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
+
+	// item 不带 role：删 assistant 侧历史识别不出来，只能走终极兜底。
+	body := `{"model":"gpt-5.1","stream":false,"input":[{"type":"message","content":[{"type":"output_text","text":"old"}]},{"type":"message","role":"user","content":[{"type":"input_text","text":"hello"}]}]}`
+	result, err := svc.Forward(context.Background(), c, account, []byte(body))
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, upstream.bodies, 2, "终极兜底也必须重试一次")
+	require.Equal(t, "hello", gjson.GetBytes(upstream.bodies[1], "input.0.content.0.text").String(), "只保留最后一条 user 消息")
+	require.False(t, gjson.GetBytes(upstream.bodies[1], "input.1").Exists(), "其它历史必须被裁掉")
+}

@@ -1112,13 +1112,11 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			resp.Body = io.NopCloser(bytes.NewReader(respBody))
 			invalidEncryptedContentError := isOpenAIInvalidEncryptedContentUpstreamError(upstreamCode, upstreamMsg)
 			if resp.StatusCode == http.StatusBadRequest {
-				// 诊断：区分「判定落空」与「走的不是这条路径」，并记录出站 input 的结构
-				// 摘要（只含类型/有无 id/有无密文，绝不含密文本身）。
-				shape := ""
-				if diagBody, decodeErr := ensureReqBody(); decodeErr == nil {
-					shape = openAIInputShapeSummary(diagBody)
-				}
-				logger.LegacyPrintf("service.openai_gateway", "[OpenAI] upstream 400 in forward loop (account: %s, upstream_code: %q, invalid_encrypted: %t, input_shape: %s, msg: %s)", account.Name, upstreamCode, invalidEncryptedContentError, shape, truncateString(upstreamMsg, 200))
+				// 诊断：区分「判定落空」与「走的不是这条路径」。打印**出站 body** 的
+				// 顶层 key 与 input 结构摘要——出站 body 才是上游真正看到的东西，
+				// 而客户端原始 body 会被 codex transform 改写（剥 id、剥 reasoning 项），
+				// 看错对象会得出错误结论。
+				logger.LegacyPrintf("service.openai_gateway", "[OpenAI] upstream 400 in forward loop (account: %s, upstream_code: %q, invalid_encrypted: %t, outbound: %s, msg: %s)", account.Name, upstreamCode, invalidEncryptedContentError, openAIOutboundBodySummary(body), truncateString(upstreamMsg, 200))
 			}
 			if !httpInvalidEncryptedContentRetryTried && resp.StatusCode == http.StatusBadRequest && invalidEncryptedContentError {
 				decoded, decodeErr := ensureReqBody()
@@ -1159,14 +1157,21 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 						droppedPreviousResponseID = true
 					}
 				}
-				// 最后一道兜底：前三级都做不了时，丢弃 assistant 侧历史。
+				// 最后一道兜底：前面都做不了时，丢弃 assistant 侧历史。
 				// 代价是模型看不到之前的 assistant 回答与加密推理；收益是请求能成功。
 				// 对话卡死（客户端反复重放同一份历史）比丢一段历史更糟。
 				droppedAssistantHistory := false
 				if !trimmedEncryptedItems && !strippedInvalidItemID && !droppedPreviousResponseID {
 					droppedAssistantHistory = stripOpenAIAssistantHistoryForInvalidEncryptedContent(decoded)
 				}
-				if trimmedEncryptedItems || strippedInvalidItemID || droppedPreviousResponseID || droppedAssistantHistory {
+				// 终极兜底：连 assistant 侧历史都识别不出来时（客户端回放的 item 不带 role），
+				// 把 input 裁剪成「只保留最后一条 user 消息」。上下文基本丢失，
+				// 但请求一定发得出去，对话不会卡死。
+				trimmedToLastUserMessage := false
+				if !trimmedEncryptedItems && !strippedInvalidItemID && !droppedPreviousResponseID && !droppedAssistantHistory {
+					trimmedToLastUserMessage = trimOpenAIInputToLastUserMessage(decoded)
+				}
+				if trimmedEncryptedItems || strippedInvalidItemID || droppedPreviousResponseID || droppedAssistantHistory || trimmedToLastUserMessage {
 					body, err = marshalOpenAIUpstreamJSON(decoded)
 					if err != nil {
 						return nil, fmt.Errorf("serialize invalid_encrypted_content retry body: %w", err)
@@ -1179,7 +1184,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 					}
 					httpInvalidEncryptedContentRetryTried = true
 					rejectedFieldRetryState.remember(body)
-					logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Retrying non-WSv2 request once after invalid_encrypted_content (account: %s, upstream_code: %s, invalid_item_id: %s, trimmed_encrypted_items: %t, stripped_invalid_item_id: %t, dropped_previous_response_id: %t, dropped_assistant_history: %t)", account.Name, upstreamCode, invalidItemID, trimmedEncryptedItems, strippedInvalidItemID, droppedPreviousResponseID, droppedAssistantHistory)
+					logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Retrying non-WSv2 request once after invalid_encrypted_content (account: %s, upstream_code: %s, invalid_item_id: %s, trimmed_encrypted_items: %t, stripped_invalid_item_id: %t, dropped_previous_response_id: %t, dropped_assistant_history: %t, trimmed_to_last_user_message: %t)", account.Name, upstreamCode, invalidItemID, trimmedEncryptedItems, strippedInvalidItemID, droppedPreviousResponseID, droppedAssistantHistory, trimmedToLastUserMessage)
 					continue
 				}
 				logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Skip non-WSv2 invalid_encrypted_content retry because encrypted reasoning items are missing (account: %s, upstream_code: %s, invalid_item_id: %s)", account.Name, upstreamCode, invalidItemID)
