@@ -172,6 +172,32 @@ Correct: preserve the binding when the account is expected to recover
 req.PreserveStickyBinding = true
 ```
 
+### 7.1 Observability contract
+
+The diagnostic log line for a 400 upstream error carries the request's
+`session_hash`:
+
+```text
+[OpenAI] upstream 400 in forward loop (account: 6854, session_hash: openai:0376..., upstream_code: "invalid_encrypted_content", invalid_encrypted: true, outbound: keys=..., input=[...], msg: ...)
+```
+
+The `session_hash` is the Redis key suffix of the sticky binding
+(`sticky_session:{groupID}:{sessionHash}`), so the log line plus a Redis read
+answers the question "which account was this session bound to?".
+
+Rules:
+
+- The handler computes the session hash and stores it in the gin context
+  (`SetOpenAISessionHashToContext`); the service layer reads it with
+  `OpenAISessionHashFromContext`. **The service layer must not recompute it**:
+  the outbound body has already been rewritten by the codex transform, so the
+  content-derived fallback seed would differ from the original request.
+- The value is diagnostic only. It never influences scheduling.
+- `ops_error_logs` does **not** store the session hash, so a failure that is
+  only visible in the database cannot be correlated with the binding. When
+  adding a column for it, remember the table is maintained outside the ent
+  schema (no `ent/schema/ops_error_log.go`).
+
 ### 8. Production evidence (2026-10-23)
 
 **Sticky sessions do work on 160.** Measured directly against the live Redis:

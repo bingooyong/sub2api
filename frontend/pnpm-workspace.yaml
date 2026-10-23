@@ -1,0 +1,17 @@
+# pnpm 11 起 pnpm.* 设置从 package.json 迁到 pnpm-workspace.yaml。
+# 这里与 package.json 的 pnpm.overrides 保持逐字一致：
+#   - pnpm 10 读 package.json 的 pnpm 字段
+#   - pnpm 11 读本文件
+# 两个版本解析出的 overrides 相同，依赖解析结果也就相同。
+# onlyBuiltDependencies 用于放行 esbuild / vue-demi 的构建脚本（pnpm 11 默认阻止）。
+overrides:
+  "js-cookie": "3.0.7"
+  "form-data@<4.0.6": ">=4.0.6"
+  "postcss@<8.5.18": ">=8.5.18"
+  "dompurify@<3.4.17": ">=3.4.17"
+  "source-map-js@<1.2.2": ">=1.2.2"
+  "follow-redirects@<1.16.1": ">=1.16.1"
+
+onlyBuiltDependencies:
+  - esbuild
+  - vue-demi

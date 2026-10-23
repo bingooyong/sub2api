@@ -459,3 +459,58 @@ func TestOpenAIGatewayService_Forward_InvalidEncryptedContentTrimsToLastUserMess
 	require.Equal(t, "hello", gjson.GetBytes(upstream.bodies[1], "input.0.content.0.text").String(), "只保留最后一条 user 消息")
 	require.False(t, gjson.GetBytes(upstream.bodies[1], "input.1").Exists(), "其它历史必须被裁掉")
 }
+
+// TestOpenAISessionHashContextRoundTrip 锁定 session hash 的 context 传递：
+// handler 写入 → service 读出，用于把出错请求与当时的账号绑定对应起来。
+func TestOpenAISessionHashContextRoundTrip(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	require.Empty(t, OpenAISessionHashFromContext(c), "未写入时应为空")
+
+	SetOpenAISessionHashToContext(c, "  openai:abc123  ")
+	require.Equal(t, "openai:abc123", OpenAISessionHashFromContext(c), "应去除首尾空白")
+
+	SetOpenAISessionHashToContext(c, "")
+	require.Equal(t, "openai:abc123", OpenAISessionHashFromContext(c), "空值不应覆盖已有值")
+
+	// 另一个 context 不应看到该值（key 是请求级）
+	other, _ := gin.CreateTestContext(httptest.NewRecorder())
+	require.Empty(t, OpenAISessionHashFromContext(other))
+}
+
+// TestOpenAIGatewayService_Forward_DiagnosticLogCarriesSessionHash
+// 诊断日志必须带 session_hash：这是把「出错请求」与「当时的账号绑定」对应起来的唯一线索。
+func TestOpenAIGatewayService_Forward_DiagnosticLogCarriesSessionHash(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	upstream := &httpUpstreamRecorder{responses: []*http.Response{
+		{
+			StatusCode: http.StatusBadRequest,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(productionInvalidEncryptedContentBody)),
+		},
+		{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(`{"id":"ok","usage":{"input_tokens":1,"output_tokens":2}}`)),
+		},
+	}}
+	cfg := &config.Config{}
+	cfg.Security.URLAllowlist.Enabled = false
+	svc := &OpenAIGatewayService{cfg: cfg, httpUpstream: upstream}
+	account := &Account{ID: 10, Name: "apikey", Platform: PlatformOpenAI, Type: AccountTypeAPIKey,
+		Concurrency: 1, Credentials: map[string]any{
+			"api_key":  "sk-test",
+			"base_url": "https://example.com",
+		},
+		Extra: map[string]any{"use_responses_api": true}}
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
+	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
+	SetOpenAISessionHashToContext(c, "openai:sessionprobe123")
+
+	body := `{"model":"gpt-5.1","stream":false,"input":[{"type":"reasoning","id":"rs_1","encrypted_content":"gAAA","summary":[]},{"type":"message","role":"user","content":[{"type":"input_text","text":"hi"}]}]}`
+	_, err := svc.Forward(context.Background(), c, account, []byte(body))
+	require.NoError(t, err)
+	require.Equal(t, "openai:sessionprobe123", OpenAISessionHashFromContext(c), "转发过程中 session hash 必须保持可读")
+	require.Len(t, upstream.bodies, 2)
+}

@@ -178,8 +178,8 @@ body 里既没有 id 也没有密文——上游是凭**服务端状态**去 hyd
 
 ```go
 logger.LegacyPrintf("service.openai_gateway",
-    "[OpenAI] upstream 400 in forward loop (account: %s, upstream_code: %q, invalid_encrypted: %t, outbound: %s, msg: %s)",
-    account.Name, upstreamCode, invalidEncryptedContentError,
+    "[OpenAI] upstream 400 in forward loop (account: %s, session_hash: %s, upstream_code: %q, invalid_encrypted: %t, outbound: %s, msg: %s)",
+    account.Name, OpenAISessionHashFromContext(c), upstreamCode, invalidEncryptedContentError,
     openAIOutboundBodySummary(body), truncateString(upstreamMsg, 200))
 ```
 
@@ -187,6 +187,13 @@ logger.LegacyPrintf("service.openai_gateway",
 续链字段（`previous_response_id` / `conversation` / `include` / `store` /
 `reasoning` / `model`）与 input 的结构摘要（每个 item 的 type/role/id/有无密文）。
 **绝不输出用户对话内容与密文本身。**
+
+诊断日志还必须带 **`session_hash`**：它是把「出错请求」与「当时的账号绑定」对应起来
+的唯一线索（见
+[Sticky Sessions and Encrypted Reasoning Content](./openai-sticky-session-encrypted-content.md)）。
+session hash 由 handler 生成后写入 gin context（`SetOpenAISessionHashToContext`），
+service 层用 `OpenAISessionHashFromContext` 读取——**service 层自己重算是不可靠的**，
+因为出站 body 已被 codex transform 改写，内容兜底种子会与原请求不一致。
 
 ### 4. Validation & Error Matrix
 

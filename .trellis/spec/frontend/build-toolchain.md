@@ -35,9 +35,17 @@ Build output location (fixed by `frontend/vite.config.ts`):
 build: { outDir: '../backend/internal/web/dist' }
 ```
 
-**Current repository state**: the overrides still live in the `pnpm` field of
-`frontend/package.json`, and there is **no `pnpm-workspace.yaml` in the repo**.
-That layout works with pnpm 10 and earlier.
+**Current repository state**: the overrides live in **both** places, with
+byte-identical content:
+
+- `frontend/package.json` → `pnpm.overrides` (read by pnpm 10 and earlier);
+- `frontend/pnpm-workspace.yaml` → `overrides` + `onlyBuiltDependencies`
+  (read by pnpm 11).
+
+Keeping both is intentional: pnpm 10 ignores the workspace file, pnpm 11
+ignores the `pnpm` field, and both resolve the same dependency set. CI uses
+`pnpm/action-setup@v6` **without pinning a version**, so it may run pnpm 11 at
+any time — the workspace file is what keeps the build working there.
 
 For a pnpm 11 build, provide a `frontend/pnpm-workspace.yaml` containing the
 same overrides plus the build-script allowlist:

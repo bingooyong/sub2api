@@ -130,6 +130,38 @@ func grokPreviousResponseSessionSeed(body []byte) string {
 	return "grok-prev-resp:" + id
 }
 
+// openAISessionHashContextKey 承载本次请求的粘性会话哈希。
+// handler 在生成 session hash 后写入，service 层的错误诊断日志据此回显，
+// 便于把「出错请求」与「当时的账号绑定」对应起来。
+// gin 的 Context.Set 要求字符串键，因此用常量字符串而非自定义类型。
+const openAISessionHashContextKey = "openai_session_hash"
+
+// SetOpenAISessionHashToContext 把本次请求的粘性会话哈希写入 gin context。
+// 只用于诊断回显，不参与任何调度决策。
+func SetOpenAISessionHashToContext(c *gin.Context, sessionHash string) {
+	if c == nil {
+		return
+	}
+	sessionHash = strings.TrimSpace(sessionHash)
+	if sessionHash == "" {
+		return
+	}
+	c.Set(openAISessionHashContextKey, sessionHash)
+}
+
+// OpenAISessionHashFromContext 读取本次请求的粘性会话哈希（可能为空）。
+func OpenAISessionHashFromContext(c *gin.Context) string {
+	if c == nil {
+		return ""
+	}
+	value, ok := c.Get(openAISessionHashContextKey)
+	if !ok {
+		return ""
+	}
+	text, _ := value.(string)
+	return strings.TrimSpace(text)
+}
+
 // GenerateExplicitSessionHash generates a sticky-session hash only from explicit
 // client session signals. It intentionally skips content-derived fallback and is
 // used by stateless endpoints such as /v1/images.

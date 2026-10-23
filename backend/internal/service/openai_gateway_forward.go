@@ -1116,7 +1116,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 				// 顶层 key 与 input 结构摘要——出站 body 才是上游真正看到的东西，
 				// 而客户端原始 body 会被 codex transform 改写（剥 id、剥 reasoning 项），
 				// 看错对象会得出错误结论。
-				logger.LegacyPrintf("service.openai_gateway", "[OpenAI] upstream 400 in forward loop (account: %s, upstream_code: %q, invalid_encrypted: %t, outbound: %s, msg: %s)", account.Name, upstreamCode, invalidEncryptedContentError, openAIOutboundBodySummary(body), truncateString(upstreamMsg, 200))
+				logger.LegacyPrintf("service.openai_gateway", "[OpenAI] upstream 400 in forward loop (account: %s, session_hash: %s, upstream_code: %q, invalid_encrypted: %t, outbound: %s, msg: %s)", account.Name, OpenAISessionHashFromContext(c), upstreamCode, invalidEncryptedContentError, openAIOutboundBodySummary(body), truncateString(upstreamMsg, 200))
 			}
 			if !httpInvalidEncryptedContentRetryTried && resp.StatusCode == http.StatusBadRequest && invalidEncryptedContentError {
 				decoded, decodeErr := ensureReqBody()
