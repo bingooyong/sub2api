@@ -195,7 +195,14 @@ func TestOpenAIGatewayService_IdentityOptOutKeepsExplicitUserAgentOverrides(t *t
 					headers := buildIdentityTestHeaders(t, &OpenAIGatewayService{cfg: cfg}, account, path, input)
 					wantUA, wantOriginator := accountUA, "codex_vscode"
 					if force {
-						wantUA, wantOriginator = codexCLIUserAgent, "codex-tui"
+						// 上游 v0.2.18 起，网关默认身份由 codex-tui 改为 codex_cli_rs
+						// （上游 issue #5198：codex-tui 身份会被风控分层并收到
+						// server_is_overloaded）。ForceCodexCLI 场景下客户端身份被强制
+						// 覆盖，兜底默认随之改为 CLI。
+						// 注意：本仓库定制关闭了强制统一身份（enforcement=false），
+						// 客户端自报的真实身份仍由 pairCodexIdentityHeaders 与
+						// preserveCodexClientIdentityHeaders 原样保留，不受此默认值影响。
+						wantUA, wantOriginator = codexCLIUserAgent, "codex_cli_rs"
 					}
 					require.Equal(t, wantUA, headers.Get("User-Agent"))
 					require.Equal(t, wantOriginator, headers.Get("Originator"))
