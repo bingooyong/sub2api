@@ -254,3 +254,38 @@ HTTP 路径的 invalid_encrypted_content 自愈只认 error.code，上游返回 
 
 - 请用户在带失效密文的会话中复现，确认自愈生效
 - 演练脚本的 health 检查失败未导致非零退出，建议下次修正
+
+
+## Session 9: 加密推理密文自愈：补兜底与诊断日志，发版 5d30c3087
+
+**Date**: 2026-10-23
+**Task**: 加密推理密文自愈：补兜底与诊断日志，发版 5d30c3087
+**Branch**: `dev`
+
+### Summary
+
+上一版上线后仍复现且无自愈日志，改为加足诊断信息并补最后一道兜底（丢弃 assistant 侧历史），停服 109 秒发布
+
+### Main Changes
+
+- 新增 stripOpenAIAssistantHistoryForInvalidEncryptedContent：最后一道兜底，丢弃 assistant 侧历史保留 user 消息与工具输出
+- 新增 openAIInputShapeSummary/FromBytes：诊断用 input 结构摘要（只含类型/有无 id/密文字段）
+- forward.go 400 分支与 handleErrorResponse 入口各加一条无条件诊断日志
+- spec 补第四级恢复动作（丢弃 assistant 侧历史）
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] go test ./internal/service/ -count=1 全绿（150s）
+- [OK] 切换后：停服 109 秒、版本接口 ok、三个 health ok、UI 200、日志 0 错误
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 请用户在带失效密文的会话中重试，用诊断日志确认自愈是否生效

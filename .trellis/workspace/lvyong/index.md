@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 8
+- **Total Sessions**: 9
 - **Last Active**: 2026-10-23
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~256 | Active |
+| `journal-1.md` | ~291 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 9 | 2026-10-23 | 加密推理密文自愈：补兜底与诊断日志，发版 5d30c3087 | - | `dev` |
 | 8 | 2026-10-23 | 修复加密推理密文失效自愈并发布到 160（87d78f265） | - | `dev` |
 | 7 | 2026-10-23 | 修复 OpenAI 加密推理密文失效的 HTTP 路径自愈判定 | - | `v0.2.17-hotfix1` |
 | 6 | 2026-10-23 | Upgrade to v0.2.17-hotfix1 | `8934e084b`, `cac4d290e` | `dev` |
