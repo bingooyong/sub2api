@@ -1,0 +1,6 @@
+{"file":".trellis/spec/backend/codex-forwarding.md","reason":"Verify merged Codex transport and identity behavior at final boundaries."}
+{"file":".trellis/spec/backend/account-admin-list.md","reason":"Verify platform-scoped filters and page-size contracts survive."}
+{"file":".trellis/spec/backend/account-quality-operations.md","reason":"Verify local quality and isolation operations remain complete."}
+{"file":".trellis/spec/backend/database-guidelines.md","reason":"Verify migration immutability, late application, schema transition, and idempotency."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Check platform catalog, config, API, type, and UI consistency."}
+{"file":".trellis/tasks/10-23-upgrade-v0-2-17-hotfix1/research/upstream-v0.2.17.md","reason":"Validate pinned ancestry, conflicts, and encrypted-reasoning recovery."}

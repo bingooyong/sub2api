@@ -1,0 +1,6 @@
+{"file":".trellis/spec/backend/codex-forwarding.md","reason":"Preserve local Codex identity, fingerprint, session, tool-call, and WebSocket contracts."}
+{"file":".trellis/spec/backend/account-admin-list.md","reason":"Preserve platform-scoped type and plan-tier filtering across the platform-catalog refactor."}
+{"file":".trellis/spec/backend/account-quality-operations.md","reason":"Preserve quality probes, judgment, isolation, restore, and history."}
+{"file":".trellis/spec/backend/database-guidelines.md","reason":"Apply full-filename migration identity and realistic upgrade testing rules."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"The merge spans migrations, services, handlers, configuration, types, and UI."}
+{"file":".trellis/tasks/10-23-upgrade-v0-2-17-hotfix1/research/upstream-v0.2.17.md","reason":"Pinned upstream evidence, conflict inventory, release changes, and production-error fix."}
