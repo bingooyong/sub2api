@@ -1117,10 +1117,40 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 					return nil, decodeErr
 				}
 				invalidDigests := collectOpenAIEncryptedContentDigestsRaw(lineageEntryBody)
-				if trimOpenAIEncryptedReasoningItems(decoded) {
-					// previous_response_id 必须保留：HTTP 路径下它是 API-key 客户端的
-					// 续链锚点，剥离失效密文不影响它继续有效。WS 路径丢弃锚点是 WS 特有
-					// 语义（连接复用 + session 锚点），不适用于 HTTP 入站。
+				trimmedEncryptedItems := trimOpenAIEncryptedReasoningItems(decoded)
+				// message 项的 encrypted_content 同样会让上游 hydration 失败
+				// （"The encrypted content for item amsg_xxx could not be verified"）。
+				trimmedEncryptedItems = trimOpenAIInvalidEncryptedContentItems(decoded) || trimmedEncryptedItems
+				// 密文失效有三种形态，三种自愈动作互相独立、任一成功即可重试：
+				//
+				// 1) 密文在请求体里（客户端回放的 reasoning.encrypted_content）。
+				//    剥掉字段后重试，previous_response_id 保留——HTTP 路径下它是
+				//    API-key 客户端的续链锚点，剥离失效密文不影响它继续有效。
+				//
+				// 2) 上游点名了失效的 item（错误文案 "The encrypted content for
+				//    item amsg_xxx could not be verified ... hydration failed"）。
+				//    上游对已知 id 会做密文 lookup，lookup 失败才报 400。删掉该
+				//    item 的 id 字段即可切断 lookup，item 的可见内容仍然保留。
+				//
+				// 3) 密文完全在上游服务端，请求体里既没有密文也没有可匹配的 id。
+				//    唯一的解法是断开续链：丢弃 previous_response_id 让上游不再
+				//    hydrate 旧响应（与 WS 路径的恢复语义一致）。
+				//
+				// 三种动作都做不了时，才真的无从自愈。
+				strippedInvalidItemID := false
+				invalidItemID := openAIInvalidEncryptedContentItemID(upstreamMsg)
+				if invalidItemID != "" {
+					strippedInvalidItemID = stripOpenAIInvalidEncryptedContentItemID(decoded, invalidItemID)
+				}
+				droppedPreviousResponseID := false
+				if !trimmedEncryptedItems && !strippedInvalidItemID {
+					if previousResponseID, ok := decoded["previous_response_id"].(string); ok &&
+						strings.TrimSpace(previousResponseID) != "" && !HasFunctionCallOutput(decoded) {
+						delete(decoded, "previous_response_id")
+						droppedPreviousResponseID = true
+					}
+				}
+				if trimmedEncryptedItems || strippedInvalidItemID || droppedPreviousResponseID {
 					body, err = marshalOpenAIUpstreamJSON(decoded)
 					if err != nil {
 						return nil, fmt.Errorf("serialize invalid_encrypted_content retry body: %w", err)
@@ -1133,10 +1163,10 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 					}
 					httpInvalidEncryptedContentRetryTried = true
 					rejectedFieldRetryState.remember(body)
-					logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Retrying non-WSv2 request once after invalid_encrypted_content (account: %s, upstream_code: %s)", account.Name, upstreamCode)
+					logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Retrying non-WSv2 request once after invalid_encrypted_content (account: %s, upstream_code: %s, invalid_item_id: %s, trimmed_encrypted_items: %t, stripped_invalid_item_id: %t, dropped_previous_response_id: %t)", account.Name, upstreamCode, invalidItemID, trimmedEncryptedItems, strippedInvalidItemID, droppedPreviousResponseID)
 					continue
 				}
-				logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Skip non-WSv2 invalid_encrypted_content retry because encrypted reasoning items are missing (account: %s)", account.Name)
+				logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Skip non-WSv2 invalid_encrypted_content retry because encrypted reasoning items are missing (account: %s, upstream_code: %s, invalid_item_id: %s)", account.Name, upstreamCode, invalidItemID)
 			}
 			if retryBody, reason, changed, retryErr := normalizeOpenAIResponsesRejectedFieldRetryBody(resp.StatusCode, body, respBody); retryErr != nil {
 				return nil, fmt.Errorf("normalize rejected Responses field retry body: %w", retryErr)

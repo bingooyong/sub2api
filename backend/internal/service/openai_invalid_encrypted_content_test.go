@@ -211,6 +211,135 @@ func TestOpenAIGatewayService_Forward_DoesNotRetryUnrelatedBadRequest(t *testing
 	require.Len(t, upstream.bodies, 1, "无关 400 不得触发重试")
 }
 
+// TestOpenAIGatewayService_Forward_InvalidEncryptedContentDropsAnchorWhenNoItemIDMatches
+// 密文在服务端、input 里也没有可匹配的 id 时，最后手段是断开续链。
+func TestOpenAIGatewayService_Forward_InvalidEncryptedContentDropsAnchorWhenNoItemIDMatches(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	serverSideBody := `{"error":{"code":"invalid_encrypted_content","message":"The encrypted content for item amsg_missing could not be verified. Reason: encrypted content hydration failed: Encrypted content could not be decrypted or parsed.","param":"input","type":"invalid_request_error"}}`
+	upstream := &httpUpstreamRecorder{responses: []*http.Response{
+		{
+			StatusCode: http.StatusBadRequest,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(serverSideBody)),
+		},
+		{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(`{"id":"resp_recovered","usage":{"input_tokens":1,"output_tokens":2}}`)),
+		},
+	}}
+	cfg := &config.Config{}
+	cfg.Security.URLAllowlist.Enabled = false
+	svc := &OpenAIGatewayService{cfg: cfg, httpUpstream: upstream}
+	// apikey 路径：没有 codex transform，previous_response_id 与 item id 都会保留，
+	// 因此「丢锚点 / 保留锚点」的兜底动作只在这一路径上可验证。
+	account := &Account{ID: 6642, Name: "apikey", Platform: PlatformOpenAI, Type: AccountTypeAPIKey,
+		Concurrency: 1, Credentials: map[string]any{
+			"api_key":  "sk-test",
+			"base_url": "https://example.com",
+		},
+		Extra: map[string]any{"use_responses_api": true}}
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
+	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
+
+	body := `{"model":"gpt-5.1","stream":false,"previous_response_id":"resp_server_side","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"hello"}]}]}`
+	result, err := svc.Forward(context.Background(), c, account, []byte(body))
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, upstream.bodies, 2, "无法匹配 item id 时应靠丢锚点恢复")
+	require.False(t, gjson.GetBytes(upstream.bodies[1], "previous_response_id").Exists(), "重试必须丢弃 previous_response_id 断开续链")
+	require.Equal(t, "hello", gjson.GetBytes(upstream.bodies[1], "input.0.content.0.text").String(), "对话内容必须保留")
+}
+
+// TestOpenAIGatewayService_Forward_InvalidEncryptedContentKeepsAnchorWithFunctionCallOutput
+// 含 function_call_output 时锚点是工具续链依据，不能丢。
+func TestOpenAIGatewayService_Forward_InvalidEncryptedContentKeepsAnchorWithFunctionCallOutput(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	serverSideBody := `{"error":{"code":"invalid_encrypted_content","message":"The encrypted content for item amsg_x could not be verified. Reason: encrypted content hydration failed: Encrypted content could not be decrypted or parsed.","param":"input","type":"invalid_request_error"}}`
+	upstream := &httpUpstreamRecorder{responses: []*http.Response{
+		{
+			StatusCode: http.StatusBadRequest,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(serverSideBody)),
+		},
+		{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(`{"id":"resp_recovered","usage":{"input_tokens":1,"output_tokens":2}}`)),
+		},
+	}}
+	cfg := &config.Config{}
+	cfg.Security.URLAllowlist.Enabled = false
+	svc := &OpenAIGatewayService{cfg: cfg, httpUpstream: upstream}
+	// apikey 路径：没有 codex transform，previous_response_id 与 item id 都会保留，
+	// 因此「丢锚点 / 保留锚点」的兜底动作只在这一路径上可验证。
+	account := &Account{ID: 6642, Name: "apikey", Platform: PlatformOpenAI, Type: AccountTypeAPIKey,
+		Concurrency: 1, Credentials: map[string]any{
+			"api_key":  "sk-test",
+			"base_url": "https://example.com",
+		},
+		Extra: map[string]any{"use_responses_api": true}}
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
+	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
+
+	body := `{"model":"gpt-5.1","stream":false,"previous_response_id":"resp_anchor","input":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"earlier"}],"encrypted_content":"gAAAencrypted"},{"type":"function_call_output","call_id":"call_1","output":"result"}]}`
+	result, err := svc.Forward(context.Background(), c, account, []byte(body))
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, upstream.bodies, 2)
+	require.False(t, gjson.GetBytes(upstream.bodies[1], "input.0.encrypted_content").Exists(), "message 密文必须被剥掉")
+	require.Equal(t, "resp_anchor", gjson.GetBytes(upstream.bodies[1], "previous_response_id").String(), "含 function_call_output 时必须保留锚点")
+}
+
+// TestOpenAIGatewayService_Forward_InvalidEncryptedContentTrimsMessageEncryptedContent
+// 真实生产形态：store=false 回放场景下 assistant message 项带 encrypted_content，
+// 上游对其 hydration 失败并点名 item id（amsg_ 前缀）。此时唯一的自愈是删掉
+// message 的 encrypted_content（保留 id 与可见内容）后重试。
+//
+// 这是 2026-10-23 oauth 账号（6854）遇到的实际形态：判定命中但既有的
+// trimOpenAIEncryptedReasoningItems 不处理 message，导致无可剥之物而放弃自愈。
+func TestOpenAIGatewayService_Forward_InvalidEncryptedContentTrimsMessageEncryptedContent(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	serverSideBody := `{"error":{"code":"invalid_encrypted_content","message":"The encrypted content for item amsg_01a09b80-e59f-7500-a42f-a5621a1194f8 could not be verified. Reason: encrypted content hydration failed: Encrypted content could not be decrypted or parsed.","param":"input","type":"invalid_request_error"}}`
+	upstream := &httpUpstreamRecorder{responses: []*http.Response{
+		{
+			StatusCode: http.StatusBadRequest,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(serverSideBody)),
+		},
+		{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(`{"id":"resp_recovered","usage":{"input_tokens":1,"output_tokens":2}}`)),
+		},
+	}}
+	cfg := &config.Config{}
+	cfg.Security.URLAllowlist.Enabled = false
+	svc := &OpenAIGatewayService{cfg: cfg, httpUpstream: upstream}
+	// apikey 路径：没有 codex transform，previous_response_id 与 item id 都会保留，
+	// 因此「丢锚点 / 保留锚点」的兜底动作只在这一路径上可验证。
+	account := &Account{ID: 6642, Name: "apikey", Platform: PlatformOpenAI, Type: AccountTypeAPIKey,
+		Concurrency: 1, Credentials: map[string]any{
+			"api_key":  "sk-test",
+			"base_url": "https://example.com",
+		},
+		Extra: map[string]any{"use_responses_api": true}}
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/openai/v1/responses", nil)
+	SetOpenAIClientTransport(c, OpenAIClientTransportHTTP)
+
+	body := `{"model":"gpt-5.1","stream":false,"input":[{"type":"message","id":"amsg_01a09b80-e59f-7500-a42f-a5621a1194f8","role":"assistant","content":[{"type":"output_text","text":"earlier answer"}],"encrypted_content":"gAAAencrypted"},{"type":"message","role":"user","content":[{"type":"input_text","text":"hello"}]}]}`
+	result, err := svc.Forward(context.Background(), c, account, []byte(body))
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, upstream.bodies, 2, "message 密文失效必须重试一次")
+	require.Equal(t, "gAAAencrypted", gjson.GetBytes(upstream.bodies[0], "input.0.encrypted_content").String(), "首次请求应保留密文")
+	require.False(t, gjson.GetBytes(upstream.bodies[1], "input.0.encrypted_content").Exists(), "重试必须剥掉 message 的失效密文")
+	require.Equal(t, "earlier answer", gjson.GetBytes(upstream.bodies[1], "input.0.content.0.text").String(), "message 可见内容必须保留")
+}
+
 // TestClassifyOpenAIWSErrorEventFromRaw_InvalidEncryptedContentSharedWithHTTPPath
 // WS 路径与 HTTP 路径必须共用同一判定：生产形态（code 空/ null）都要归类为
 // invalid_encrypted_content。
