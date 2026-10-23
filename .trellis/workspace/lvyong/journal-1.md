@@ -328,3 +328,37 @@ HTTP 路径的 invalid_encrypted_content 自愈只认 error.code，上游返回 
 
 - 请用户在旧会话（带失效密文）重试，验证密文自愈是否生效；必要时用 160 上的诊断日志定位
 - 评估是否关闭 GATEWAY_DISABLE_CODEX_IDENTITY_ENFORCEMENT：上游认定 codex-tui 会被风控分层（server_is_overloaded）
+
+
+## Session 11: 沉淀 v0.2.18 合并与密文自愈的 code-spec
+
+**Date**: 2026-10-23
+**Task**: 沉淀 v0.2.18 合并与密文自愈的 code-spec
+**Branch**: `dev`
+
+### Summary
+
+新增 Codex 身份定制与前端构建工具链两份 code-spec，密文 spec 补终极兜底与诊断对象要点
+
+### Main Changes
+
+- 新增 .trellis/spec/backend/codex-identity-customization.md（7 节）
+- 新增 .trellis/spec/frontend/build-toolchain.md（7 节，pnpm 11 设置迁移）
+- openai-encrypted-reasoning-recovery.md 补第 5 级兜底、§3.5 诊断对象、签名与断言点
+- backend/index.md 与 frontend/index.md 登记新 spec 并补 Quality Check 指针
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] spec 引用的全部函数与常量已逐一校验存在于代码（无 MISSING）
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 把 pnpm-workspace.yaml 迁移提交进仓库（当前只是构建时在 staging 临时创建）
