@@ -1110,11 +1110,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			}
 			respBody = s.redactAgentIdentitySensitiveBody(ctx, account, respBody)
 			resp.Body = io.NopCloser(bytes.NewReader(respBody))
-			invalidEncryptedContentError := upstreamCode == "invalid_encrypted_content" ||
-				(upstreamCode == "thinking_signature_invalid" &&
-					strings.Contains(upstreamMsg, "The encrypted content") &&
-					strings.Contains(upstreamMsg, "could not be verified") &&
-					strings.Contains(upstreamMsg, "could not be decrypted or parsed"))
+			invalidEncryptedContentError := isOpenAIInvalidEncryptedContentUpstreamError(upstreamCode, upstreamMsg)
 			if !httpInvalidEncryptedContentRetryTried && resp.StatusCode == http.StatusBadRequest && invalidEncryptedContentError {
 				decoded, decodeErr := ensureReqBody()
 				if decodeErr != nil {
@@ -1122,6 +1118,9 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 				}
 				invalidDigests := collectOpenAIEncryptedContentDigestsRaw(lineageEntryBody)
 				if trimOpenAIEncryptedReasoningItems(decoded) {
+					// previous_response_id 必须保留：HTTP 路径下它是 API-key 客户端的
+					// 续链锚点，剥离失效密文不影响它继续有效。WS 路径丢弃锚点是 WS 特有
+					// 语义（连接复用 + session 锚点），不适用于 HTTP 入站。
 					body, err = marshalOpenAIUpstreamJSON(decoded)
 					if err != nil {
 						return nil, fmt.Errorf("serialize invalid_encrypted_content retry body: %w", err)
@@ -1134,7 +1133,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 					}
 					httpInvalidEncryptedContentRetryTried = true
 					rejectedFieldRetryState.remember(body)
-					logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Retrying non-WSv2 request once after invalid_encrypted_content (account: %s)", account.Name)
+					logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Retrying non-WSv2 request once after invalid_encrypted_content (account: %s, upstream_code: %s)", account.Name, upstreamCode)
 					continue
 				}
 				logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Skip non-WSv2 invalid_encrypted_content retry because encrypted reasoning items are missing (account: %s)", account.Name)
