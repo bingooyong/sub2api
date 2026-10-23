@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 6
+- **Total Sessions**: 7
 - **Last Active**: 2026-10-23
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~180 | Active |
+| `journal-1.md` | ~218 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 7 | 2026-10-23 | 修复 OpenAI 加密推理密文失效的 HTTP 路径自愈判定 | - | `v0.2.17-hotfix1` |
 | 6 | 2026-10-23 | Upgrade to v0.2.17-hotfix1 | `8934e084b`, `cac4d290e` | `dev` |
 | 5 | 2026-10-08 | Upgrade to v0.2.14-hotfix1 | `32f15a78e`, `8986de74e` | `dev` |
 | 4 | 2026-09-30 | Account quality operations | `c11317269` | `dev` |

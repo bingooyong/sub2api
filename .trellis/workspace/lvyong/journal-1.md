@@ -178,3 +178,41 @@ Merged upstream v0.2.17, preserved local Codex identity and account quality oper
 ### Status
 
 [OK] **Completed**
+
+
+## Session 7: 修复 OpenAI 加密推理密文失效的 HTTP 路径自愈判定
+
+**Date**: 2026-10-23
+**Task**: 修复 OpenAI 加密推理密文失效的 HTTP 路径自愈判定
+**Branch**: `v0.2.17-hotfix1`
+
+### Summary
+
+HTTP 路径的 invalid_encrypted_content 自愈只认 error.code，上游返回 code=null 时判定落空导致对话卡死；改为码+文案双通道判定并与 WS 路径共用同一函数
+
+### Main Changes
+
+- 新增 backend/internal/service/openai_invalid_encrypted_content.go：isOpenAIInvalidEncryptedContentUpstreamError(code, msg)
+- openai_gateway_forward.go：HTTP 路径改用共享判定，日志补充 upstream_code
+- openai_ws_forwarder_support.go：WS 路径改用同一判定函数，消除两条路径口径漂移
+- 新增 openai_invalid_encrypted_content_test.go：判定表驱动 + HTTP 集成 + WS 一致性
+- 新增 .trellis/spec/backend/openai-encrypted-reasoning-recovery.md（code-spec 7 节）
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] go build ./... 通过；go vet ./internal/service/ 无告警；gofmt 无差异
+- [OK] go test ./internal/service/ -count=1 全绿（150s，exit 0）
+- [OK] 定向用例：code=null 生产形态自愈重试成功、无关 400 不重试、连续 400 只重试一次
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 发版到 160（走 vutl 仓库 .trellis/spec/ops/sub2api-160-deploy.md 流程）——本任务按用户要求不发版
+- 根因层面的账号调度策略（同一会话固定同一账号）另立任务
