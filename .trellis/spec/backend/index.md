@@ -15,13 +15,14 @@ This directory contains guidelines for backend development. Fill in each file wi
 | Guide | Description | Status |
 |-------|-------------|--------|
 | [Directory Structure](./directory-structure.md) | Module organization and file layout | To fill |
-| [Database Guidelines](./database-guidelines.md) | Migration identity, ordering, upgrade tests, and database conventions | Documented |
+| [Database Guidelines](./database-guidelines.md) | Migration identity, ordering, upgrade tests, additive migrations, platform whitelist ownership, and database conventions | Documented |
 | [Error Handling](./error-handling.md) | Error types, handling strategies | To fill |
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
 | [Logging Guidelines](./logging-guidelines.md) | Structured logging, log levels | To fill |
 | [Codex Forwarding](./codex-forwarding.md) | Client metadata, socket reuse, and native tool correlation | Documented |
 | [Admin Account List](./account-admin-list.md) | Account table filters, plan_tier vs type, page-size defaults | Documented |
 | [Account Quality Operations](./account-quality-operations.md) | Quality probes, judge outcomes, isolation, restore, and durable audit contracts | Documented |
+| [OpenAI Encrypted Reasoning Recovery](./openai-encrypted-reasoning-recovery.md) | Detecting upstream invalid encrypted content, self-healing retry, HTTP/WS parity | Documented |
 
 ## Quality Check
 
@@ -32,6 +33,22 @@ semantics and verify metadata at the final HTTP or WebSocket boundary.
 For admin account list filter or shared table page-size changes, follow
 [Admin Account List](./account-admin-list.md). Keep `type` and `plan_tier`
 separate and keep plan aliases platform-scoped.
+
+For any migration that adds tables or columns, or that touches the platform
+whitelist, follow the migration scenarios in
+[Database Guidelines](./database-guidelines.md). In particular: the platform
+CHECK constraints dropped by `242_drop_platform_check_constraints.sql` must
+not be re-added, the platform catalog in `backend/internal/domain/platforms.go`
+is the single source of truth for valid platforms, and `groups.i18n` is
+display-only while `name` remains the identity column.
+
+For any change to OpenAI upstream error classification, retry, or failover
+behavior, follow
+[OpenAI Encrypted Reasoning Recovery](./openai-encrypted-reasoning-recovery.md).
+The key constraints: the invalid-encrypted-content verdict must not depend on
+`error.code` (production sends `code: null`), the HTTP and WSv2 paths must
+share one verdict function, and the HTTP retry must preserve
+`previous_response_id`.
 
 ---
 
