@@ -216,3 +216,41 @@ HTTP 路径的 invalid_encrypted_content 自愈只认 error.code，上游返回 
 
 - 发版到 160（走 vutl 仓库 .trellis/spec/ops/sub2api-160-deploy.md 流程）——本任务按用户要求不发版
 - 根因层面的账号调度策略（同一会话固定同一账号）另立任务
+
+
+## Session 8: 修复加密推理密文失效自愈并发布到 160（87d78f265）
+
+**Date**: 2026-10-23
+**Task**: 修复加密推理密文失效自愈并发布到 160（87d78f265）
+**Branch**: `dev`
+
+### Summary
+
+定位两种密文失效形态（code=null 与 message 项 hydration failed），修复判定与恢复动作并发布到 160，停服 101 秒
+
+### Main Changes
+
+- 新增 openai_invalid_encrypted_content.go：双通道判定 + 剥 message 密文 + 解析失效 item id
+- openai_gateway_forward.go：恢复动作扩为三类（剥 reasoning/compaction、剥 message、丢 previous_response_id）
+- openai_ws_forwarder_support.go：WS 路径共用同一判定，消除口径漂移
+- 新增 openai_invalid_encrypted_content_test.go（6 组用例）
+- spec：openai-encrypted-reasoning-recovery.md 补三种恢复动作与 message 密文形态
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] go test ./internal/service/ -count=1 全绿（151s，exit 0）
+- [OK] 隔离演练：migrations 300 不变、accounts 6859/users 1/keys 7/groups 8 一致
+- [OK] 切换后：版本接口 0.2.17-hotfix1、三个 health ok、UI 200、/v1/models 19 个模型、核心表 inventory 一致、日志 0 错误
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 请用户在带失效密文的会话中复现，确认自愈生效
+- 演练脚本的 health 检查失败未导致非零退出，建议下次修正
