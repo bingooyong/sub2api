@@ -294,7 +294,28 @@ Correct：判定同源，恢复动作各按各的路径语义
 body, err = marshalOpenAIUpstreamJSON(decoded) // decoded 只被剥了失效密文
 ```
 
-### 8. 不做的事
+### 8. 当前验证状态（2026-10-23）
+
+| 层面 | 状态 |
+| --- | --- |
+| 单元/集成测试（`openai_invalid_encrypted_content_test.go`） | 通过：判定表驱动、HTTP 集成、WS 一致性、三级恢复动作、终极兜底 |
+| `go test ./internal/service/ -count=1` | 全绿（150s） |
+| 隔离演练 | 通过：镜像正常启动、schema 加载正常 |
+| 生产端到端（带失效密文的旧会话重试） | **待确认** —— 已发布 `0.2.18-hotfix1`（含本修复），但尚未拿到用户在旧会话中的复现结果 |
+
+若生产仍然复现，160 上的诊断日志会直接给出答案：
+
+```text
+[OpenAI] upstream 400 in forward loop (account: ..., upstream_code: "...", invalid_encrypted: true|false, outbound: keys=..., input=[...], msg: ...)
+```
+
+按 `outbound=` 字段判断：
+
+- `input` 里 `enc=true` 的项存在 → 剥离动作本应命中，检查为何 `trimmed_encrypted_items` 为 false
+- 全部 `enc=false` 且无 `previous_response_id`/`conversation` → 密文完全在服务端，只能靠丢锚点/删历史/终极兜底恢复；若仍失败，说明这三者都没生效，需要看 `dropped_*` 标志
+- `invalid_encrypted=false` → 判定落空，判定函数需要放宽
+
+### 9. 不做的事
 
 - 不做「同一会话固定同一账号」的调度改造：那是账号策略，收益大但影响面广，另立任务。
   密文由上游签发，网关的职责是**识别并自愈**，不是保证密文永远可解。

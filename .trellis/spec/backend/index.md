@@ -16,7 +16,7 @@ This directory contains guidelines for backend development. Fill in each file wi
 |-------|-------------|--------|
 | [Directory Structure](./directory-structure.md) | Module organization and file layout | To fill |
 | [Database Guidelines](./database-guidelines.md) | Migration identity, ordering, upgrade tests, additive migrations, platform whitelist ownership, and database conventions | Documented |
-| [Error Handling](./error-handling.md) | Error types, handling strategies | To fill |
+| [Error Handling](./error-handling.md) | Error types, handling strategies, upstream error classification | Partial |
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
 | [Logging Guidelines](./logging-guidelines.md) | Structured logging, log levels | To fill |
 | [Codex Forwarding](./codex-forwarding.md) | Client metadata, socket reuse, and native tool correlation | Documented |
@@ -24,6 +24,8 @@ This directory contains guidelines for backend development. Fill in each file wi
 | [Account Quality Operations](./account-quality-operations.md) | Quality probes, judge outcomes, isolation, restore, and durable audit contracts | Documented |
 | [OpenAI Encrypted Reasoning Recovery](./openai-encrypted-reasoning-recovery.md) | Detecting upstream invalid encrypted content, self-healing retry, HTTP/WS parity | Documented |
 | [Codex Outbound Identity Customization](./codex-identity-customization.md) | Preserving caller identity under disable_codex_identity_enforcement, upstream CLI normalization gating | Documented |
+| [Sticky Sessions and Encrypted Reasoning Content](./openai-sticky-session-encrypted-content.md) | Why a session can change accounts and how that invalidates issued ciphertext | Documented |
+| [OpenAI Upstream Error Handling](./openai-upstream-error-handling.md) | Multi-signal error classification, retry budgets, recovery actions, ops reporting | Documented |
 
 ## Quality Check
 
@@ -58,6 +60,21 @@ originator, follow
 The key constraint: upstream's TUI-to-CLI normalization must stay gated on
 `codexIdentityEnforcement`, otherwise the fork silently stops preserving the
 caller's real identity.
+
+For any change to OpenAI account scheduling, sticky-session binding lifetime,
+or account failover, follow
+[Sticky Sessions and Encrypted Reasoning Content](./openai-sticky-session-encrypted-content.md).
+The key constraint: encrypted reasoning content is bound to the account that
+issued it, so dropping a sticky binding (quota, rate limit, model mismatch)
+guarantees the next replayed ciphertext is undecryptable — and failing over to
+another account cannot fix that error.
+
+For any change to upstream error extraction, retry/recovery branches, failover
+decisions, or ops error reporting, follow
+[OpenAI Upstream Error Handling](./openai-upstream-error-handling.md).
+The key constraints: classify on code **and** message (upstream sends
+`code: null` for the same failure), recovery must change the request rather
+than repeat it, and every recovery branch is budgeted to one attempt.
 
 ---
 
