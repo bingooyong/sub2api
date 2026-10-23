@@ -397,3 +397,38 @@ HTTP 路径的 invalid_encrypted_content 自愈只认 error.code，上游返回 
 ### Next Steps
 
 - 验证粘性会话假设：把 scheduler 的 session_hash 绑定与 ops_error_logs 的 account_id 按 client_request_id 关联
+
+
+## Session 13: 线上验证密文自愈生效并修正根因结论
+
+**Date**: 2026-10-23
+**Task**: 线上验证密文自愈生效并修正根因结论
+**Branch**: `dev`
+
+### Summary
+
+生产实测确认自愈已生效（19 次连续成功 0 错误），同时推翻「粘性会话从未写入」的错误结论
+
+### Main Changes
+
+- 密文 spec：验证状态改为已验证生效，补生产时间线与 Recovered 前缀的判读方法
+- 粘性会话 spec：改为实测证明粘性会话正常工作，保留两种候选根因与不可回溯的原因
+- vutl ops spec：新增「Redis 审计要用 KEYS 不要信 --scan」一节
+- 记忆文件补第 7 条（Redis 假阴性观测陷阱）
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] 线上验证：最后一次密文错误 13:28 UTC，此后 13:29–14:29 期间 19 次请求全部成功、0 密文错误
+- [OK] Redis 实测：10 个 sticky_session 绑定指向真实 account_id；探针请求当场创建新绑定
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 若要区分两种候选根因，需要在 ops_error_logs 里记录 session_hash（当前缺失）
