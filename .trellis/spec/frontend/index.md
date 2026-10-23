@@ -20,8 +20,18 @@ This directory contains guidelines for frontend development. Fill in each file w
 | [State Management](./state-management.md) | Local state, global state, server state | To fill |
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
 | [Type Safety](./type-safety.md) | Type patterns, validation | To fill |
+| [Build Toolchain](./build-toolchain.md) | pnpm 11 settings migration, frozen lockfile, build script allowlist, dist artifact | Documented |
 
 ---
+
+## Quality Check
+
+For any change to dependencies, overrides, or the build pipeline, follow
+[Build Toolchain](./build-toolchain.md). The key constraints: pnpm 11 reads
+`pnpm.*` settings from `pnpm-workspace.yaml` (not `package.json`), the override
+set must stay byte-equivalent to what `pnpm-lock.yaml` records, and
+`backend/internal/web/dist` must be produced from the same source snapshot as
+the server binary.
 
 ## How to Fill These Guidelines
 

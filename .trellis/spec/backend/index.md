@@ -23,6 +23,7 @@ This directory contains guidelines for backend development. Fill in each file wi
 | [Admin Account List](./account-admin-list.md) | Account table filters, plan_tier vs type, page-size defaults | Documented |
 | [Account Quality Operations](./account-quality-operations.md) | Quality probes, judge outcomes, isolation, restore, and durable audit contracts | Documented |
 | [OpenAI Encrypted Reasoning Recovery](./openai-encrypted-reasoning-recovery.md) | Detecting upstream invalid encrypted content, self-healing retry, HTTP/WS parity | Documented |
+| [Codex Outbound Identity Customization](./codex-identity-customization.md) | Preserving caller identity under disable_codex_identity_enforcement, upstream CLI normalization gating | Documented |
 
 ## Quality Check
 
@@ -49,6 +50,14 @@ The key constraints: the invalid-encrypted-content verdict must not depend on
 `error.code` (production sends `code: null`), the HTTP and WSv2 paths must
 share one verdict function, and the HTTP retry must preserve
 `previous_response_id`.
+
+For any change to outbound Codex identity headers (User-Agent / originator /
+version), the `disable_codex_identity_enforcement` switch, or the default Codex
+originator, follow
+[Codex Outbound Identity Customization](./codex-identity-customization.md).
+The key constraint: upstream's TUI-to-CLI normalization must stay gated on
+`codexIdentityEnforcement`, otherwise the fork silently stops preserving the
+caller's real identity.
 
 ---
 

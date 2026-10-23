@@ -35,6 +35,28 @@ func trimOpenAIEncryptedReasoningItems(reqBody map[string]any) bool
 ```
 
 ```go
+// backend/internal/service/openai_invalid_encrypted_content.go
+// 剥 message 项的 encrypted_content（store=false 回放场景下 assistant message
+// 也带密文）；保留 id 与可见内容。
+func trimOpenAIInvalidEncryptedContentItems(reqBody map[string]any) bool
+
+// 从上游错误文案解析失效 item id（"for item amsg_xxx could not be verified"）。
+func openAIInvalidEncryptedContentItemID(msg string) string
+
+// 剥掉 input 中 id 等于失效 item id 的项的 id 字段（切断上游的服务端 lookup）。
+func stripOpenAIInvalidEncryptedContentItemID(reqBody map[string]any, itemID string) bool
+
+// 删掉 input 中的 assistant 侧历史（reasoning / compaction / role=assistant）。
+func stripOpenAIAssistantHistoryForInvalidEncryptedContent(reqBody map[string]any) bool
+
+// 终极兜底：把 input 裁剪成只保留最后一条 user 消息。
+func trimOpenAIInputToLastUserMessage(reqBody map[string]any) bool
+
+// 诊断：概括**出站**请求体（顶层 key + 续链字段 + input 结构摘要）。
+func openAIOutboundBodySummary(body []byte) string
+```
+
+```go
 // backend/internal/service/openai_ws_forwarder_support.go
 // WS 错误事件分类，产出稳定的 reason 字符串。
 func classifyOpenAIWSErrorEventFromRaw(codeRaw, errTypeRaw, msgRaw string) (string, bool)
@@ -106,11 +128,14 @@ HTTP 入站路径与 WSv2 路径的**判定**必须同源。历史上两条路�
 3. **断开续链**（丢 `previous_response_id`）：仅在既无密文可剥、也无法从错误文案
    定位到失效 item 时使用，且要求请求体不含 `function_call_output`（含工具输出时
    锚点是工具续链依据，不能丢）。
-4. **丢弃 assistant 侧历史**（最后一道兜底）：前三级都做不了时，删除 input 中的
+4. **丢弃 assistant 侧历史**：前三级都做不了时，删除 input 中的
    `reasoning` / `compaction` / `compaction_summary` / `role=assistant` 项，保留 user
    消息与工具调用/工具输出。代价是模型看不到之前的 assistant 回答与加密推理；
    收益是请求能成功、对话能继续。**对话卡死（客户端反复重放同一份历史）比丢一段
    历史更糟**，所以这个取舍是划算的。只在确认是密文失效错误时触发。
+5. **裁剪为最后一条 user 消息**（终极兜底）：连 assistant 侧历史都识别不出来时
+   （客户端回放的 item 不带 `role`），把 input 裁剪成只保留最后一条 user 消息。
+   上下文基本丢失，但请求一定发得出去，对话不会卡死。
    > 注意：codex OAuth 路径的 transform 会剥掉 `previous_response_id` 与 item 的
    > `id`，所以这一步在 codex 路径上通常不适用；apikey 路径保留锚点。
    > 剥掉 item 的 `id`（`stripOpenAIInvalidEncryptedContentItemID`）同理：两条路径的
@@ -134,6 +159,35 @@ HTTP 入站路径与 WSv2 路径的**判定**必须同源。历史上两条路�
   > WS 路径丢弃锚点是 WS 特有语义（连接复用 + session 锚点），**不要**照搬到 HTTP 路径。
 - 客户端协议形状不变，错误仍在「重试也失败」时照常返回。
 
+### 3.5 诊断必须看「出站 body」，不是客户端原始 body
+
+排查这类问题最容易踩的坑：**看错了对象**。
+
+`ensureReqBody()` 返回的是**客户端原始 body + patch**，而真正发往上游的是 `body`
+（经 codex transform 改写后）。两者差异很大：
+
+- codex transform 会剥掉 item 的 `id`；
+- codex transform 会剥掉 `reasoning` 项（只保留 `encrypted_content` 通道）；
+- codex transform 可能删除 `previous_response_id`。
+
+**用客户端原始 body 判断会得出错误结论**。2026-10-23 的排查中，因为打印的是
+decoded 而非出站 body，一度误判为「出站 body 里还有 id 可以剥」，而实际上出站
+body 里既没有 id 也没有密文——上游是凭**服务端状态**去 hydrate 密文的。
+
+诊断日志必须打印**出站 body**：
+
+```go
+logger.LegacyPrintf("service.openai_gateway",
+    "[OpenAI] upstream 400 in forward loop (account: %s, upstream_code: %q, invalid_encrypted: %t, outbound: %s, msg: %s)",
+    account.Name, upstreamCode, invalidEncryptedContentError,
+    openAIOutboundBodySummary(body), truncateString(upstreamMsg, 200))
+```
+
+`openAIOutboundBodySummary` 只输出：顶层 key 列表（不含 `instructions`）、
+续链字段（`previous_response_id` / `conversation` / `include` / `store` /
+`reasoning` / `model`）与 input 的结构摘要（每个 item 的 type/role/id/有无密文）。
+**绝不输出用户对话内容与密文本身。**
+
 ### 4. Validation & Error Matrix
 
 | 条件 | 必须的结果 |
@@ -146,7 +200,9 @@ HTTP 入站路径与 WSv2 路径的**判定**必须同源。历史上两条路�
 | 命中且 `input` 里有 `reasoning` 项带 `encrypted_content` | 删该字段，保留 `id` / `summary` |
 | 命中且 `input` 里有 `message` 项带 `encrypted_content` | 删该字段，保留 `id` / 正文（**最常见的真实形态**） |
 | 命中且 `input` 里有 `compaction` 项 | 整项删除（带密文的 compaction 不能半剥） |
-| 命中但三类密文都不可剥、且无锚点可丢 | 记 `Skip ... because encrypted reasoning items are missing`，**不**重试 |
+| 命中但 body 里**完全没有**密文（密文在上游服务端） | 剥失效 item 的 id → 丢锚点 → 删 assistant 侧历史 → 裁剪为最后一条 user 消息，依次尝试 |
+| 命中且连 assistant 侧历史都识别不出来（item 不带 role） | 裁剪为最后一条 user 消息后重试 |
+| 命中但五种动作都做不了 | 记 `Skip ... because encrypted reasoning items are missing`，**不**重试 |
 | 重试后再次 400 | 终止，回客户端，不第三次重试 |
 | 命中且走了「剥密文」路径 | **保留** `previous_response_id`（HTTP 续链契约） |
 | 命中且走了「丢锚点」路径 | 要求请求体不含 `function_call_output` |
@@ -180,6 +236,9 @@ HTTP 入站路径与 WSv2 路径的**判定**必须同源。历史上两条路�
   - 连续两次 400 → 上游只被调用 **2 次**（不风暴）
   - apikey 路径上无密文可剥时 → 丢 `previous_response_id` 后重试
   - 含 `function_call_output` → 锚点保留
+  - body 里没有任何 `encrypted_content`（服务端密文形态）→ 仍能通过「剥 id / 丢锚点 /
+    删 assistant 侧历史 / 裁剪为最后一条 user 消息」中的某一级恢复
+  - item 不带 `role` → 终极兜底裁剪为最后一条 user 消息后重试成功
 - **路径一致性**：`classifyOpenAIWSErrorEventFromRaw` 对生产形态（`code` 为空/ `null`）
   返回 `invalid_encrypted_content`，与 HTTP 判定结论一致。
 - **回归**：`go test ./internal/service/ -count=1` 全绿，尤其
