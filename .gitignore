@@ -129,11 +129,13 @@ scripts
 .code-review-state
 #openspec/
 code-reviews/
+AGENTS.md
 backend/cmd/server/server
 deploy/docker-compose.override.yml
 .gocache/
 vite.config.js
 docs/*
+!docs/admin-api-keys.md
 !docs/handoffs/
 docs/handoffs/*
 !docs/handoffs/*.md

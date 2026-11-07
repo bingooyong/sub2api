@@ -190,6 +190,7 @@ func TestMigrationsRunner_AppliesLowerNumberedUpstreamMigrationsAfterLocalHigher
 	upstreamMigrations := []string{
 		"241_add_payment_order_bonus_amount.sql",
 		"241_add_typesafe_platform.sql",
+		"242_drop_platform_check_constraints.sql",
 	}
 	localHigherMigrations := []string{
 		"243_pelican_scheduled_tests.sql",
@@ -215,7 +216,7 @@ func TestMigrationsRunner_AppliesLowerNumberedUpstreamMigrationsAfterLocalHigher
 	})
 
 	// Model an existing v0.2.10-hotfix1 database: local migrations with higher
-	// numbers are recorded, while the two newly imported upstream 241 files are
+	// numbers are recorded, while the newly imported upstream 241/242 files are
 	// absent. Restore the platform constraints from migration 238 and drop
 	// bonus_amount so both imported migrations must change the schema rather
 	// than only repair migration bookkeeping.
@@ -236,6 +237,13 @@ func TestMigrationsRunner_AppliesLowerNumberedUpstreamMigrationsAfterLocalHigher
 									  'kimi', 'zhipu', 'deepseek', 'minimax', 'opencode_go'));
 	`)
 	require.NoError(t, err)
+	var oldPlatformConstraints int
+	require.NoError(t, integrationDB.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM pg_constraint
+		WHERE (conrelid = 'user_platform_quotas'::regclass AND conname = 'user_platform_quotas_platform_check')
+		   OR (conrelid = 'composite_model_routes'::regclass AND conname = 'composite_model_routes_target_platform_check')
+	`).Scan(&oldPlatformConstraints))
+	require.Equal(t, 2, oldPlatformConstraints, "the pre-upgrade schema must contain both whitelist constraints")
 	_, err = integrationDB.ExecContext(ctx,
 		"DELETE FROM schema_migrations WHERE filename = ANY($1)", pq.Array(upstreamMigrations),
 	)
@@ -262,13 +270,113 @@ func TestMigrationsRunner_AppliesLowerNumberedUpstreamMigrationsAfterLocalHigher
 	`).Scan(&bonusColumnExists))
 	require.True(t, bonusColumnExists)
 
-	tx := testTx(t)
-	requireConstraintDefinitionContains(t, tx, "user_platform_quotas", "user_platform_quotas_platform_check", "'typesafe'")
-	requireConstraintDefinitionContains(t, tx, "composite_model_routes", "composite_model_routes_target_platform_check", "'typesafe'")
+	var platformConstraints int
+	require.NoError(t, integrationDB.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM pg_constraint
+		WHERE (conrelid = 'user_platform_quotas'::regclass AND conname = 'user_platform_quotas_platform_check')
+		   OR (conrelid = 'composite_model_routes'::regclass AND conname = 'composite_model_routes_target_platform_check')
+	`).Scan(&platformConstraints))
+	require.Zero(t, platformConstraints, "migration 242 must remove the old platform whitelist constraints")
 
 	// The normal second application must remain a no-op after the late files are
 	// recorded, proving the next application start is idempotent.
 	require.NoError(t, ApplyMigrations(ctx, integrationDB))
+}
+
+func TestMigrationsRunner_V0218UpgradePreservesLocalMigrationsWithDuplicatePrefixes(t *testing.T) {
+	ctx := context.Background()
+	upstreamMigrations := []string{
+		"247_scoped_admin_api_keys.sql",
+		"248_group_image_count_billing.sql",
+	}
+	localMigrations := []string{
+		"243_pelican_scheduled_tests.sql",
+		"247_account_quality_ops.sql",
+		"248_account_quality_judgment.sql",
+		"249_account_quality_operation_history.sql",
+	}
+	readLocalHistory := func() string {
+		t.Helper()
+		var history string
+		var count int
+		require.NoError(t, integrationDB.QueryRowContext(ctx, `
+			SELECT COUNT(*), jsonb_object_agg(filename, to_jsonb(schema_migrations))::text
+			FROM schema_migrations WHERE filename = ANY($1)
+		`, pq.Array(localMigrations)).Scan(&count, &history))
+		require.Equal(t, len(localMigrations), count, "all local migrations must already be recorded")
+		return history
+	}
+	localHistoryBefore := readLocalHistory()
+	var operationID int64
+
+	// Repair the disposable integration database even if an assertion fails
+	// after restoring the old schema or deleting migration records.
+	t.Cleanup(func() {
+		_, err := integrationDB.ExecContext(context.Background(),
+			"DELETE FROM schema_migrations WHERE filename = ANY($1)", pq.Array(upstreamMigrations))
+		require.NoError(t, err)
+		require.NoError(t, ApplyMigrations(context.Background(), integrationDB))
+		_, err = integrationDB.ExecContext(context.Background(), "DELETE FROM account_quality_operations WHERE id = $1", operationID)
+		require.NoError(t, err)
+	})
+
+	// Restore the actual v0.2.18 schema, rather than only removing registry
+	// rows: neither the scoped-key table nor the billing column existed then.
+	_, err := integrationDB.ExecContext(ctx, `
+		DROP TABLE scoped_admin_api_keys;
+		ALTER TABLE groups DROP COLUMN image_count_billing;
+	`)
+	require.NoError(t, err)
+	_, err = integrationDB.ExecContext(ctx,
+		"DELETE FROM schema_migrations WHERE filename = ANY($1)", pq.Array(upstreamMigrations))
+	require.NoError(t, err)
+	require.NoError(t, integrationDB.QueryRowContext(ctx, `
+		INSERT INTO account_quality_operations (plan_id, account_id, quality_round_id, outcome, status, snapshot)
+		VALUES (-1, -1, 'v0218-upgrade-' || gen_random_uuid()::text, 'isolated', 'success', '{"schedulable":true}')
+		RETURNING id
+	`).Scan(&operationID))
+	var operationBefore string
+	require.NoError(t, integrationDB.QueryRowContext(ctx,
+		"SELECT to_jsonb(account_quality_operations)::text FROM account_quality_operations WHERE id = $1", operationID,
+	).Scan(&operationBefore))
+
+	require.NoError(t, ApplyMigrations(ctx, integrationDB))
+	for _, name := range upstreamMigrations {
+		var count int
+		require.NoError(t, integrationDB.QueryRowContext(ctx,
+			"SELECT COUNT(*) FROM schema_migrations WHERE filename = $1", name).Scan(&count))
+		require.Equal(t, 1, count, "upstream migration %s must coexist with local migrations", name)
+	}
+	require.Equal(t, localHistoryBefore, readLocalHistory(), "local checksums and application timestamps must remain unchanged")
+
+	// Verify both new schema changes and the local Pelican/quality schema.
+	func() {
+		tx := testTx(t)
+		defer tx.Rollback()
+		requireColumn(t, tx, "scoped_admin_api_keys", "key_hash", "character varying", 64, false)
+		requireColumn(t, tx, "scoped_admin_api_keys", "deleted_at", "timestamp with time zone", 0, true)
+		requireColumn(t, tx, "groups", "image_count_billing", "boolean", 0, false)
+		requireColumnDefaultContains(t, tx, "groups", "image_count_billing", "false")
+		requireColumn(t, tx, "scheduled_test_plans", "pelican_config", "jsonb", 0, true)
+		requireColumn(t, tx, "scheduled_test_results", "quality_action", "text", 0, false)
+		requireColumn(t, tx, "scheduled_test_results", "quality_judgment", "jsonb", 0, true)
+		requireColumn(t, tx, "account_quality_states", "state", "jsonb", 0, false)
+		requireIndex(t, tx, "scheduled_test_plans", "scheduled_test_quality_account_unique")
+		requireIndex(t, tx, "account_quality_operations", "idx_account_quality_operations_account")
+	}()
+	var historyBefore, historyAfter, operationAfter string
+	require.NoError(t, integrationDB.QueryRowContext(ctx,
+		"SELECT jsonb_object_agg(filename, to_jsonb(schema_migrations))::text FROM schema_migrations",
+	).Scan(&historyBefore))
+	require.NoError(t, ApplyMigrations(ctx, integrationDB))
+	require.NoError(t, integrationDB.QueryRowContext(ctx,
+		"SELECT jsonb_object_agg(filename, to_jsonb(schema_migrations))::text FROM schema_migrations",
+	).Scan(&historyAfter))
+	require.Equal(t, historyBefore, historyAfter, "the next startup must not rewrite migration history")
+	require.NoError(t, integrationDB.QueryRowContext(ctx,
+		"SELECT to_jsonb(account_quality_operations)::text FROM account_quality_operations WHERE id = $1", operationID,
+	).Scan(&operationAfter))
+	require.Equal(t, operationBefore, operationAfter, "upgrade and restart must preserve quality operation data")
 }
 
 func TestMigrationsRunner_AuthIdentityAndPaymentSchemaStayAligned(t *testing.T) {

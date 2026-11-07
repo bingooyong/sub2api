@@ -1,0 +1,12 @@
+{"file":".trellis/spec/backend/codex-forwarding.md","reason":"Verify local Codex and encrypted-content behavior after merge."}
+{"file":".trellis/spec/backend/account-admin-list.md","reason":"Verify filters, plan tiers, and page-size contracts."}
+{"file":".trellis/spec/backend/account-quality-operations.md","reason":"Verify local quality and isolation operations."}
+{"file":".trellis/spec/backend/database-guidelines.md","reason":"Verify migration identity, schema coexistence, and idempotency."}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"Review security, billing, API, generated, and frontend contracts."}
+{"file":".trellis/tasks/11-07-upgrade-v0-2-19-hotfix1/research/upstream-v0.2.19.md","reason":"Validate upstream pin, mandatory changes, conflicts, and compatibility notes."}
+{"file": ".trellis/spec/backend/codex-identity-customization.md", "reason": "Preserve caller identity under opt-out and force CLI precedence."}
+{"file": ".trellis/spec/backend/openai-encrypted-reasoning-recovery.md", "reason": "Code-null errors, bounded HTTP/WS recovery, message ciphertext and prior response."}
+{"file": ".trellis/spec/backend/openai-sticky-session-encrypted-content.md", "reason": "Preserve account binding and session hash diagnostics."}
+{"file": ".trellis/spec/backend/openai-upstream-error-handling.md", "reason": "Classify and bound retries consistently."}
+{"file": ".trellis/spec/frontend/build-toolchain.md", "reason": "Verify frozen installs, mirrored overrides, selective build policy and Node minimum."}
+{"file": ".trellis/tasks/11-07-upgrade-v0-2-19-hotfix1/research/latest-main-triage.md", "reason": "Review selected posttag security backports and defer broader changes."}
