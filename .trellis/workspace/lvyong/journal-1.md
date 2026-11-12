@@ -492,3 +492,36 @@ Merged pinned v0.2.21 into v0.2.21-hotfix1 preserving fingerprint and identity c
 ### Status
 
 [OK] **Completed**
+
+
+## Session 16: Review and repair v0.2.21 manual quality detection
+
+**Date**: 2026-11-12
+**Task**: Review and repair v0.2.21 manual quality detection
+**Branch**: `v0.2.21-hotfix1`
+
+### Summary
+
+Repaired six review findings and two independent followups; preserved fingerprint/branding contracts, verified final UI and binary, archived only this task.
+
+### Main Changes
+
+- Passive previews with CSS/resource/navigation filtering; shared 401 refresh, 423 compliance dialog, disclosure focus/ARIA.
+- Observational OAuth cache/renewal with adopted-version expiry guard; known non-text mapped-model rejection and custom text compatibility.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c58eab184` | (see git log) |
+
+### Testing
+
+- [OK] Final backend targeted service/admin regressions, full vet and complete-report golangci-lint: 0 issues.
+- [OK] Frontend full393/3158 before narrow CSS followup; final affected51/helper11, lint/types/locale/build pass.
+- [OK] Real Chromium eleven-fixture production/no-parentCSP preview and final production UI smoke pass; embedded binary reports0.2.21-hotfix1.
+- [OK] Core fingerprint/identity files byte-identical to pre-upgrade; no migration/dependency changes; no live GPT/push/deploy.
+
+### Status
+
+[OK] **Completed**
