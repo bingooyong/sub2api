@@ -96,6 +96,35 @@ allowBuilds:
   vue-i18n/compiler 11.4.16, decode-uri-component 0.5.1, and follow-redirects 1.16.2.
   Explicit `allowBuilds` booleans allowed the two existing install scripts.
 
+## 6.1 Rebuilding an older commit
+
+When rebuilding an image from a commit that predates `pnpm-workspace.yaml`
+(e.g. to keep a rollback point), that commit has no such file. Generate one from
+*that commit's own* `frontend/package.json`:
+
+```bash
+# in the rebuilt snapshot's frontend/ directory
+python3 - <<'PY'
+import json
+d = json.load(open("package.json"))
+ov = d.get("pnpm", {}).get("overrides", {})
+lines = ["overrides:"]
+for k, v in ov.items():
+    lines.append(f'  "{k}": "{v}"')
+lines += ["", "onlyBuiltDependencies:", "  - esbuild", "  - vue-demi",
+          "", "allowBuilds:", "  esbuild: true", "  vue-demi: true"]
+open("pnpm-workspace.yaml", "w").write("\n".join(lines) + "\n")
+PY
+```
+
+Use that commit's overrides, not the current branch's — the lockfile in the
+rebuilt snapshot was generated against them.
+
+Also note: `pnpm install ... | tail -N` masks the install's exit code (the
+pipeline returns `tail`'s). A failed install then cascades into
+`pnpm run build` (its dependency-status check installs again) and no `dist` is
+produced — the symptom looks like a build problem, not an install problem.
+
 ## 7. Wrong vs Correct
 
 Wrong: leave overrides only in `package.json`, or use non-boolean build approvals.
