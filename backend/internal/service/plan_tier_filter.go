@@ -40,7 +40,7 @@ func NormalizePlanType(value string) string {
 		if unicode.IsSpace(r) || r == '_' || r == '-' {
 			continue
 		}
-		b.WriteRune(r)
+		_, _ = b.WriteRune(r)
 	}
 	return b.String()
 }

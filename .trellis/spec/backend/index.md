@@ -17,7 +17,7 @@ This directory contains guidelines for backend development. Fill in each file wi
 | [Directory Structure](./directory-structure.md) | Module organization and file layout | To fill |
 | [Database Guidelines](./database-guidelines.md) | Migration identity, ordering, upgrade tests, additive migrations, platform whitelist ownership, and database conventions | Documented |
 | [Error Handling](./error-handling.md) | Error types, handling strategies, upstream error classification | Partial |
-| [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
+| [Quality Guidelines](./quality-guidelines.md) | Complete lint reports, error-channel diagnostics, and verification | Documented |
 | [Logging Guidelines](./logging-guidelines.md) | Structured logging, log levels | To fill |
 | [Codex Forwarding](./codex-forwarding.md) | Client metadata, socket reuse, and native tool correlation | Documented |
 | [Admin Account List](./account-admin-list.md) | Account table filters, plan_tier vs type, page-size defaults | Documented |
@@ -28,6 +28,10 @@ This directory contains guidelines for backend development. Fill in each file wi
 | [OpenAI Upstream Error Handling](./openai-upstream-error-handling.md) | Multi-signal error classification, retry budgets, recovery actions, ops reporting | Documented |
 
 ## Quality Check
+
+For release verification and backend test/lint changes, follow
+[Quality Guidelines](./quality-guidelines.md), including complete lint reports
+and preserving assertions when adding shutdown diagnostics.
 
 For Codex forwarding changes, follow the assertion points and validation commands
 in [Codex Forwarding](./codex-forwarding.md). Preserve distinct call and item ID

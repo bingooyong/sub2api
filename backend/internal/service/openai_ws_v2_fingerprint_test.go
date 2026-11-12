@@ -114,7 +114,8 @@ func TestPassthroughFingerprint_HeadersAndEveryFrame(t *testing.T) {
 			}
 			require.NoError(t, client.CloseNow())
 			select {
-			case <-serverErr:
+			case shutdownErr := <-serverErr:
+				t.Logf("fingerprint passthrough shutdown result: %v", shutdownErr)
 			case <-time.After(3 * time.Second):
 				t.Fatal("passthrough did not stop")
 			}
