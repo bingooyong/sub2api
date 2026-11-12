@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
 )
@@ -12,6 +14,7 @@ type pelicanTestContextKey struct{}
 type pelicanTestOptions struct {
 	prompt          string
 	reasoningEffort string
+	manual          bool
 }
 
 func withPelicanTestOptions(ctx context.Context, options pelicanTestOptions) context.Context {
@@ -27,13 +30,58 @@ func pelicanTestOptionsFromContext(ctx context.Context) (pelicanTestOptions, boo
 // Pelican UI. The existing /test endpoint deliberately keeps its historical
 // probe payload; only this endpoint opts into the user prompt and reasoning.
 func (s *AccountTestService) TestPelicanAccountConnection(c *gin.Context, accountID int64, modelID, prompt, reasoningEffort string) error {
+	return s.testPelicanAccountConnection(c, accountID, modelID, prompt, reasoningEffort, false)
+}
+
+// TestManualPelicanAccountConnection limits ad hoc comparison to verified text
+// transports. Scheduled Pelican plans retain their existing provider routing.
+func (s *AccountTestService) TestManualPelicanAccountConnection(c *gin.Context, accountID int64, modelID, prompt, reasoningEffort string) error {
+	if err := ValidatePelicanTestInput(modelID, prompt, reasoningEffort); err != nil {
+		return s.sendErrorAndEnd(c, err.Error())
+	}
+	return s.testPelicanAccountConnection(c, accountID, modelID, prompt, reasoningEffort, true)
+}
+
+// ValidatePelicanTestInput also runs at the HTTP boundary, before streaming.
+func ValidatePelicanTestInput(modelID, prompt, reasoningEffort string) error {
+	if model := strings.TrimSpace(modelID); model == "" || utf8.RuneCountInString(model) > 100 || strings.ContainsAny(model, "\r\n\x00") {
+		return errors.New("model_id must contain 1–100 characters")
+	}
+	if text := strings.TrimSpace(prompt); text == "" || utf8.RuneCountInString(text) > 32000 {
+		return errors.New("prompt must contain 1–32000 characters")
+	}
+	if strings.TrimSpace(reasoningEffort) != "" && normalizePelicanReasoningEffort(reasoningEffort) == "" {
+		return errors.New("reasoning_effort must be minimal, low, medium, high or xhigh")
+	}
+	return nil
+}
+
+func (s *AccountTestService) testPelicanAccountConnection(c *gin.Context, accountID int64, modelID, prompt, reasoningEffort string, manual bool) error {
 	options := pelicanTestOptions{
 		prompt:          strings.TrimSpace(prompt),
 		reasoningEffort: normalizePelicanReasoningEffort(reasoningEffort),
+		manual:          manual,
 	}
 	ctx := withPelicanTestOptions(c.Request.Context(), options)
 	c.Request = c.Request.WithContext(ctx)
-	return s.TestAccountConnection(c, accountID, modelID, options.prompt, AccountTestModeDefault)
+	return s.TestAccountConnection(c, accountID, strings.TrimSpace(modelID), options.prompt, AccountTestModeDefault)
+}
+
+func isPelicanProbe(ctx context.Context) bool {
+	_, ok := pelicanTestOptionsFromContext(ctx)
+	return ok
+}
+
+func isPelicanTextModel(model string) bool {
+	model = strings.ToLower(strings.TrimSpace(model))
+	// Inspect mapped provider model families, not arbitrary substrings in a
+	// user-defined model name (for example, an image-analysis text model).
+	for _, prefix := range []string{"gpt-image-", "dall-e-", "gpt-audio", "gpt-4o-audio", "gpt-4o-mini-audio", "gpt-realtime", "gpt-4o-realtime", "gpt-4o-mini-realtime", "text-embedding-", "tts-", "whisper-", "sora-"} {
+		if strings.HasPrefix(model, prefix) {
+			return false
+		}
+	}
+	return true
 }
 
 func normalizePelicanReasoningEffort(value string) string {

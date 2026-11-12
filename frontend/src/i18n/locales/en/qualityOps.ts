@@ -1,6 +1,6 @@
 export default {
   "title": "Quality Operations",
-  "description": "Test account answers on a schedule, then remove selected groups or disable scheduling on a wrong answer. One rule per account.",
+  "description": "Compare account answers and drawings immediately, or schedule quality tests and failure actions. One scheduled rule per account.",
   "refresh": "Refresh",
   "create": "Create test rule",
   "edit": "Edit rule",
@@ -81,5 +81,44 @@ export default {
   "passCount": "Passed / Total",
   "details": "Details",
   "loadMore": "Load more",
-  "groupsRestored": "Original groups restored"
+  "groupsRestored": "Original groups restored",
+  "manual": {
+    "title": "Manual detection",
+    "description": "Compare OpenAI accounts immediately with the same question. Manual tests do not change account groups, scheduling or health state.",
+    "close": "Close panel",
+    "selectPage": "Select this page",
+    "clear": "Clear selection",
+    "loading": "Loading accounts…",
+    "noAccounts": "No OpenAI accounts found.",
+    "previous": "Previous page",
+    "next": "Next page",
+    "concurrency": "Concurrent requests (1–8)",
+    "preset": "Question preset",
+    "pelican": "Pelican riding a bicycle",
+    "candy": "Candy reasoning question",
+    "custom": "Custom question",
+    "candyReference": "Reference answer for the original candy question: 21. Compare the response yourself; completion is not a quality verdict.",
+    "start": "Start detection",
+    "stop": "Stop",
+    "progress": "{completed} / {total} finished",
+    "compareHelp": "Compare the pictures, details and answers across accounts. Completed means a response was received; it does not prove normal intelligence. Results remain on this page until a new batch starts.",
+    "preview": "Generated output for {account}",
+    "raw": "Original response",
+    "noPreview": "No HTML/SVG preview is available. Inspect the original response.",
+    "states": {
+      "pending": "Queued",
+      "running": "Running",
+      "success": "Completed",
+      "error": "Request failed",
+      "cancelled": "Cancelled"
+    },
+    "errors": {
+      "http": "The server rejected the request.",
+      "noBody": "The server returned no response stream.",
+      "invalidStream": "The response stream contains invalid data.",
+      "incomplete": "The stream ended before the test completed.",
+      "empty": "The test returned an empty answer.",
+      "failed": "The test failed."
+    }
+  }
 }

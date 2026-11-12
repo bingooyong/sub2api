@@ -1284,6 +1284,7 @@ type PelicanTestRequest struct {
 	ModelID         string `json:"model_id"`
 	Prompt          string `json:"prompt"`
 	ReasoningEffort string `json:"reasoning_effort"`
+	Mode            string `json:"mode"`
 }
 
 type SyncFromCRSRequest struct {
@@ -1335,17 +1336,26 @@ func (h *AccountHandler) Test(c *gin.Context) {
 // account's normal forwarding path without mutating account runtime state.
 func (h *AccountHandler) PelicanTest(c *gin.Context) {
 	accountID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
+	if err != nil || accountID <= 0 {
 		response.BadRequest(c, "Invalid account ID")
 		return
 	}
 
 	var req PelicanTestRequest
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 256<<10)
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
 	}
-	if err := h.accountTestService.TestPelicanAccountConnection(c, accountID, req.ModelID, req.Prompt, req.ReasoningEffort); err != nil {
+	if req.Mode != "" && req.Mode != service.AccountTestModeDefault {
+		response.BadRequest(c, "Manual quality detection supports the default text mode only")
+		return
+	}
+	if err := service.ValidatePelicanTestInput(req.ModelID, req.Prompt, req.ReasoningEffort); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	if err := h.accountTestService.TestManualPelicanAccountConnection(c, accountID, req.ModelID, req.Prompt, req.ReasoningEffort); err != nil {
 		return
 	}
 }

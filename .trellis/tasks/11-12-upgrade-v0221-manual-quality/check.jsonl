@@ -1,0 +1,10 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend layer conventions"}
+{"file": ".trellis/spec/backend/codex-forwarding.md", "reason": "Preserve caller identity, WS and tool correlation"}
+{"file": ".trellis/spec/backend/codex-identity-customization.md", "reason": "Identity opt-out must survive upgrade"}
+{"file": ".trellis/spec/backend/account-quality-operations.md", "reason": "Separate observation and scheduled quality mutation"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "Published migration identities and upgrade compatibility"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend conventions"}
+{"file": ".trellis/spec/frontend/build-toolchain.md", "reason": "Frozen pnpm install and workspace overrides"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Typed stream ownership and cross-layer contracts"}
+{"file": ".trellis/tasks/11-12-upgrade-v0221-manual-quality/research/cockpit-manual.md", "reason": "Reference screenshot and discovered missing probe integration"}
+{"file": ".trellis/tasks/11-12-upgrade-v0221-manual-quality/research/upgrade-identity.md", "reason": "Preservation matrix and outgoing branding audit"}

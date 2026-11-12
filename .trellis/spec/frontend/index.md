@@ -21,6 +21,7 @@ This directory contains guidelines for frontend development. Fill in each file w
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
 | [Type Safety](./type-safety.md) | Type patterns, validation | To fill |
 | [Build Toolchain](./build-toolchain.md) | pnpm 11 settings migration, frozen lockfile, build script allowlist, dist artifact | Documented |
+| [Manual Quality Detection](./manual-quality-detection.md) | Batch probes, typed SSE, cancellation, observational results and sandboxed previews | Documented |
 
 ---
 

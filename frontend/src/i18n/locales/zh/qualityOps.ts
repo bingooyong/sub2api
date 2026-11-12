@@ -1,6 +1,6 @@
 export default {
   "title": "降智运维",
-  "description": "定时检测账户回答质量，答错后移出指定分组或关闭调度。每个账户只配置一条规则。",
+  "description": "立即手工对比账号回答与绘图质量，也可配置定时检测和失败处理。每个账号只配置一条定时规则。",
   "refresh": "刷新",
   "create": "新建检测规则",
   "edit": "编辑规则",
@@ -81,5 +81,44 @@ export default {
   "passCount": "通过 / 总数",
   "details": "详情",
   "loadMore": "加载更多",
-  "groupsRestored": "已恢复原分组"
+  "groupsRestored": "已恢复原分组",
+  "manual": {
+    "title": "手工检测",
+    "description": "使用相同题目立即对比多个 OpenAI 账号。手工检测不会修改账号分组、调度或健康状态。",
+    "close": "关闭面板",
+    "selectPage": "全选本页",
+    "clear": "清空选择",
+    "loading": "正在加载账号…",
+    "noAccounts": "未找到 OpenAI 账号。",
+    "previous": "上一页",
+    "next": "下一页",
+    "concurrency": "并发请求数（1–8）",
+    "preset": "预设题目",
+    "pelican": "鹈鹕骑自行车",
+    "candy": "糖果推理题",
+    "custom": "自定义题目",
+    "candyReference": "原始糖果题的参考答案：21。请人工对比回答；检测完成不代表质量通过。",
+    "start": "开始检测",
+    "stop": "终止",
+    "progress": "已结束 {completed} / {total}",
+    "compareHelp": "对比不同账号的画面、细节和回答。“已完成”表示收到回答，不代表账号智力正常。结果保留在当前页面，直到开始新一批检测。",
+    "preview": "{account} 的生成结果",
+    "raw": "回答原文",
+    "noPreview": "未获得可预览的 HTML/SVG，请查看回答原文。",
+    "states": {
+      "pending": "等待检测",
+      "running": "检测中",
+      "success": "已完成",
+      "error": "请求失败",
+      "cancelled": "已终止"
+    },
+    "errors": {
+      "http": "服务端拒绝了请求。",
+      "noBody": "服务端没有返回响应流。",
+      "invalidStream": "响应流包含无效数据。",
+      "incomplete": "检测完成前响应流已断开。",
+      "empty": "检测没有返回有效回答。",
+      "failed": "检测失败。"
+    }
+  }
 }

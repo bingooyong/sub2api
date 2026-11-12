@@ -3,8 +3,9 @@
     <div class="space-y-6">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div><h1 class="text-2xl font-semibold">{{ t('qualityOps.title') }}</h1><p class="mt-2 text-sm text-gray-500">{{ t('qualityOps.description') }}</p></div>
-        <div class="flex gap-2"><button class="btn btn-secondary" :disabled="busy" @click="load">{{ t('qualityOps.refresh') }}</button><button class="btn btn-primary" @click="newPlan">{{ t('qualityOps.create') }}</button></div>
+        <div class="flex flex-wrap gap-2"><button class="btn btn-primary" @click="openManual">{{ t('qualityOps.manual.title') }}</button><button class="btn btn-secondary" :disabled="busy" @click="load">{{ t('qualityOps.refresh') }}</button><button class="btn btn-primary" @click="newPlan">{{ t('qualityOps.create') }}</button></div>
       </div>
+      <ManualQualityPanel v-if="manualOpened" v-show="showManual" @close="showManual = false" />
       <p v-if="error" role="alert" class="rounded-lg bg-red-50 p-3 text-red-700 dark:bg-red-950">{{ error }}</p>
       <p v-if="notice" role="status" class="rounded-lg bg-green-50 p-3 text-green-700 dark:bg-green-950">{{ notice }}</p>
       <form v-if="showForm" class="card space-y-4 p-5" @submit.prevent="save">
@@ -110,6 +111,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ManualQualityPanel from '@/components/admin/account/ManualQualityPanel.vue'
 import { listQualityPlans, runQualityPlan, listQualityOperations, type QualityOperation } from '@/api/admin/accountQuality'
 import scheduledTests from '@/api/admin/scheduledTests'
 import * as accountsAPI from '@/api/admin/accounts'
@@ -118,6 +120,8 @@ import { CANDY_PROMPT } from '@/utils/intelligenceTest'
 import type { AccountListItem, AdminGroup, ScheduledTestPlan, ScheduledTestResult } from '@/types'
 
 const { t, te } = useI18n()
+const manualOpened = ref(false), showManual = ref(false)
+function openManual() { manualOpened.value = true; showManual.value = true }
 const plans = ref<ScheduledTestPlan[]>([])
 const operations = ref<QualityOperation[]>([]), operationCursor = ref(0)
 const judgeModels = ref<string[]>([])
