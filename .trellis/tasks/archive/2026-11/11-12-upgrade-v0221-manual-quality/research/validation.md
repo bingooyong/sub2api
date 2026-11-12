@@ -59,3 +59,10 @@ The legacy quality fixture also assumed host and database clocks matched when cl
 - Embedded server build `go build -p 1 -tags embed -trimpath -ldflags '-s -w -X main.Version=0.2.21-hotfix1' -o bin/server-v0.2.21-hotfix1 ./cmd/server`: passed (184.5s), using the final frontend production assets.
 - Binary `-version`: passed (2.6s), reports `0.2.21-hotfix1`. Artifact: ignored `backend/bin/server-v0.2.21-hotfix1`.
 - Final source whitespace check passed. All required checks are complete; there are no remaining confirmed review findings. Pre-merge baseline assertions and real-account/live-deployment behavior were not claimed as verified.
+
+## Work commits
+
+- `81231fa12`: pinned upstream merge preserving fork customizations.
+- `61dbfc2b4`: real-schema group restoration and fresh-database regression.
+- `6d96a1ee8`: compatible shutdown diagnostics and backend lint contracts.
+- `f5109cf14`: manual comparison feature, transport/branding/migration regressions and Trellis records.

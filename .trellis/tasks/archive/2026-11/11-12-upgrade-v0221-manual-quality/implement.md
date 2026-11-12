@@ -41,5 +41,5 @@ Depends on the agreed existing-endpoint/SSE contract; may run alongside backend 
 ## 5. Finish (leader)
 
 - [x] Update quality/identity specs with implemented contracts and final validation record.
-- [ ] Commit merge and manual feature in reviewable commits, including task-owned artifacts only; no unrelated task or runtime files.
-- [ ] Archive completed task and record journal following Trellis finish-work. Report branch/version, checks and remaining validation gaps; no remote push or deployment.
+- [x] Commit merge and manual feature in reviewable commits, including task-owned artifacts only; no unrelated task or runtime files.
+- [x] Archive completed task and record journal following Trellis finish-work. Report branch/version, checks and remaining validation gaps; no remote push or deployment.
