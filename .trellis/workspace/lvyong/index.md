@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 17
+- **Total Sessions**: 18
 - **Last Active**: 2026-11-12
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~564 | Active |
+| `journal-1.md` | ~594 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 18 | 2026-11-12 | 补齐回滚点与 pnpm 11 allowBuilds 修正 | - | `v0.2.21-hotfix1` |
 | 17 | 2026-11-12 | 更新 160 到 0.2.21-hotfix1（合并上游 v0.2.19/20/21） | - | `v0.2.21-hotfix1` |
 | 16 | 2026-11-12 | Review and repair v0.2.21 manual quality detection | `c58eab184` | `v0.2.21-hotfix1` |
 | 15 | 2026-11-12 | Upgrade v0.2.21 and manual quality detection | `81231fa12`, `61dbfc2b4`, `6d96a1ee8`, `f5109cf14` | `v0.2.21-hotfix1` |

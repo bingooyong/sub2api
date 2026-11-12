@@ -562,3 +562,33 @@ Repaired six review findings and two independent followups; preserved fingerprin
 ### Next Steps
 
 - 重建被误删的上一版镜像 0.2.18-hotfix1-23efd173b 以补齐回滚点（后台进行中）
+
+
+## Session 18: 补齐回滚点与 pnpm 11 allowBuilds 修正
+
+**Date**: 2026-11-12
+**Task**: 补齐回滚点与 pnpm 11 allowBuilds 修正
+**Branch**: `v0.2.21-hotfix1`
+
+### Summary
+
+重建被误删的上一版回滚镜像；修正 pnpm-workspace.yaml 使 pnpm 11 的 allowBuilds 与旧版 onlyBuiltDependencies 并存
+
+### Main Changes
+
+- 重建 local/sub2api:0.2.18-hotfix1-23efd173b（ID e066f9ed1234）补齐回滚点
+- frontend/pnpm-workspace.yaml 同时保留 onlyBuiltDependencies 与 allowBuilds，兼容 pnpm 10/11
+- spec 补「重建旧 commit」一节：要用该 commit 自己的 overrides 生成 yaml
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] 仓库版配置实测：install 与 build 全通过，dompurify=3.4.17，dist 正常产出
+- [OK] 重建镜像 -version 断言通过（0.2.18-hotfix1, commit 23efd173b…）
+
+### Status
+
+[OK] **Completed**
