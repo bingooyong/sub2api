@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 14
-- **Last Active**: 2026-10-23
+- **Total Sessions**: 15
+- **Last Active**: 2026-11-12
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~470 | Active |
+| `journal-1.md` | ~494 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 15 | 2026-11-12 | Upgrade v0.2.21 and manual quality detection | `81231fa12`, `61dbfc2b4`, `6d96a1ee8`, `f5109cf14` | `v0.2.21-hotfix1` |
 | 14 | 2026-10-23 | 密文失效自愈上线 + session_hash 诊断增强（23efd173b） | - | `dev` |
 | 13 | 2026-10-23 | 线上验证密文自愈生效并修正根因结论 | - | `dev` |
 | 12 | 2026-10-23 | 沉淀粘性会话与上游错误处理的根因契约 | - | `dev` |

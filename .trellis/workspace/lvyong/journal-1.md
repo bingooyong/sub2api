@@ -468,3 +468,27 @@ HTTP 路径的 invalid_encrypted_content 自愈只认 error.code，上游返回 
 ### Next Steps
 
 - 若将来再复现密文失效，用诊断日志的 session_hash 对照 redis-cli KEYS 'sticky_session:*' 即可判定是否换过账号
+
+
+## Session 15: Upgrade v0.2.21 and manual quality detection
+
+**Date**: 2026-11-12
+**Task**: Upgrade v0.2.21 and manual quality detection
+**Branch**: `v0.2.21-hotfix1`
+
+### Summary
+
+Merged pinned v0.2.21 into v0.2.21-hotfix1 preserving fingerprint and identity customizations. Added non-mutating manual multi-account bicycle/candy/custom probes, bounded cancellation-safe comparison cards, strict SSE handling, sandbox previews, transport and branding regressions. Fixed pre-existing scheduled group restore SQL/schema mismatch. Frontend full 3143 tests, lint/typecheck/build, backend full unit/vet, fresh PostgreSQL/Redis upgrade/idempotency/restore integration, final 0-issue lint and embedded binary/version checks passed. Mock desktop/mobile browser smoke passed; no live GPT calls, deployment or push.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `81231fa12` | (see git log) |
+| `61dbfc2b4` | (see git log) |
+| `6d96a1ee8` | (see git log) |
+| `f5109cf14` | (see git log) |
+
+### Status
+
+[OK] **Completed**
