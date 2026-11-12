@@ -24,7 +24,8 @@ func TestQualityActionsRestoreOwnershipAndStaleRuns(t *testing.T) {
 				_, _ = integrationDB.ExecContext(ctx, `DELETE FROM accounts WHERE id=$1`, account)
 				_, _ = integrationDB.ExecContext(ctx, `DELETE FROM groups WHERE id IN ($1,$2)`, group, other)
 			}()
-			_, err := integrationDB.ExecContext(ctx, `INSERT INTO account_groups(account_id,group_id,priority,allowed_models) VALUES($1,$2,7,'["gpt-test"]'),($1,$3,50,NULL)`, account, group, other)
+			originalCreatedAt := time.Date(2025, time.January, 2, 3, 4, 5, 123456000, time.UTC)
+			_, err := integrationDB.ExecContext(ctx, `INSERT INTO account_groups(account_id,group_id,priority,created_at) VALUES($1,$2,7,$4),($1,$3,50,$4)`, account, group, other, originalCreatedAt)
 			require.NoError(t, err)
 			plans := NewScheduledTestPlanRepository(integrationDB)
 			results := NewScheduledTestResultRepository(integrationDB)
@@ -39,7 +40,8 @@ func TestQualityActionsRestoreOwnershipAndStaleRuns(t *testing.T) {
 			require.NoError(t, plans.TriggerQuality(ctx, plan.ID))
 			plan, err = plans.GetByID(ctx, plan.ID)
 			require.NoError(t, err)
-			now := time.Now().Truncate(time.Microsecond)
+			var now time.Time
+			require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT clock_timestamp()`).Scan(&now))
 			until := now.Add(15 * time.Minute)
 			ok, err := plans.ClaimPelican(ctx, plan, now, until, now.Add(30*time.Minute))
 			require.NoError(t, err)
@@ -60,12 +62,16 @@ func TestQualityActionsRestoreOwnershipAndStaleRuns(t *testing.T) {
 			var count int
 			require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT count(*) FROM account_groups WHERE account_id=$1 AND group_id=$2`, account, other).Scan(&count))
 			require.Equal(t, 1, count)
+			if action == "remove_groups" {
+				require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT count(*) FROM account_groups WHERE account_id=$1 AND group_id=$2`, account, group).Scan(&count))
+				require.Zero(t, count, "restoration must recreate a deleted membership")
+			}
 			require.Equal(t, "restored", apply("passed"))
 			var priority int
-			var models string
-			require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT priority,allowed_models::text FROM account_groups WHERE account_id=$1 AND group_id=$2`, account, group).Scan(&priority, &models))
+			var createdAt time.Time
+			require.NoError(t, integrationDB.QueryRowContext(ctx, `SELECT priority,created_at FROM account_groups WHERE account_id=$1 AND group_id=$2`, account, group).Scan(&priority, &createdAt))
 			require.Equal(t, 7, priority)
-			require.JSONEq(t, `["gpt-test"]`, models)
+			require.True(t, originalCreatedAt.Equal(createdAt), "restoration must preserve the original membership timestamp")
 			require.Equal(t, want, apply("failed"))
 			_, err = integrationDB.ExecContext(ctx, `UPDATE accounts SET updated_at=clock_timestamp(),name='manually edited' WHERE id=$1`, account)
 			require.NoError(t, err)

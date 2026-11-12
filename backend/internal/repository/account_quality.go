@@ -38,11 +38,10 @@ func (r *scheduledTestPlanRepository) TriggerQuality(ctx context.Context, id int
 }
 
 type qualityGroup struct {
-	AccountID     int64           `json:"account_id"`
-	GroupID       int64           `json:"group_id"`
-	Priority      int             `json:"priority"`
-	CreatedAt     time.Time       `json:"created_at"`
-	AllowedModels json.RawMessage `json:"allowed_models"`
+	AccountID int64     `json:"account_id"`
+	GroupID   int64     `json:"group_id"`
+	Priority  int       `json:"priority"`
+	CreatedAt time.Time `json:"created_at"`
 }
 type qualityState struct {
 	Action         string          `json:"action"`
@@ -179,11 +178,7 @@ func (r *scheduledTestPlanRepository) ApplyQualityOutcome(ctx context.Context, p
 				}
 			}
 			for _, group := range state.Removed {
-				var allowed any
-				if len(group.AllowedModels) > 0 && string(group.AllowedModels) != "null" {
-					allowed = string(group.AllowedModels)
-				}
-				if _, err = tx.ExecContext(ctx, `INSERT INTO account_groups(account_id,group_id,priority,created_at,allowed_models) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`, plan.AccountID, group.GroupID, group.Priority, group.CreatedAt, allowed); err != nil {
+				if _, err = tx.ExecContext(ctx, `INSERT INTO account_groups(account_id,group_id,priority,created_at) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING`, plan.AccountID, group.GroupID, group.Priority, group.CreatedAt); err != nil {
 					return "", err
 				}
 			}
@@ -227,10 +222,11 @@ func (r *scheduledTestPlanRepository) ApplyQualityOutcome(ctx context.Context, p
 func finishQualityOperation(ctx context.Context, tx *sql.Tx, plan *service.ScheduledTestPlan, until time.Time, accountName, outcome, action string, state qualityState) (string, error) {
 	status := "failed"
 	errorMessage := outcome
-	if outcome == "passed" {
+	switch outcome {
+	case "passed":
 		status = "success"
 		errorMessage = ""
-	} else if outcome == "failed" {
+	case "failed":
 		errorMessage = "answer_mismatch"
 	}
 	var snapshot any
