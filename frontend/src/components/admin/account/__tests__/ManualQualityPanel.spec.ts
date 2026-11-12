@@ -64,7 +64,7 @@ describe('ManualQualityPanel', () => {
     expect(results(wrapper).map(card => card.attributes('data-status'))).toEqual(['success', 'error', 'success'])
     expect(wrapper.text()).toContain('HTTP 429')
     const frame = wrapper.get('iframe')
-    expect(frame.attributes('sandbox')).toBe('allow-scripts')
+    expect(frame.attributes('sandbox')).toBe('')
     expect(frame.attributes('referrerpolicy')).toBe('no-referrer')
     expect(frame.attributes('srcdoc')).toContain("connect-src 'none'")
     expect(frame.attributes('srcdoc')).toContain('Content-Security-Policy')

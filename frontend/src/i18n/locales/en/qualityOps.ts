@@ -102,6 +102,7 @@ export default {
     "stop": "Stop",
     "progress": "{completed} / {total} finished",
     "compareHelp": "Compare the pictures, details and answers across accounts. Completed means a response was received; it does not prove normal intelligence. Results remain on this page until a new batch starts.",
+    "previewHelp": "Previews support SVG, embedded styles and CSS animation. External resources and generated JavaScript do not run; inspect the raw response for script-driven drawings.",
     "preview": "Generated output for {account}",
     "raw": "Original response",
     "noPreview": "No HTML/SVG preview is available. Inspect the original response.",

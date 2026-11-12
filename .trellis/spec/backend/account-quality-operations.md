@@ -113,6 +113,26 @@ their runner continues to own explicit judge/isolation/restore actions.
   `reasoning.effort`; Chat Completions uses the user message and
   `reasoning_effort`. Preserve account mapping, proxy/TLS, credentials and
   explicit identity/header overrides.
+- Manual model validation checks the mapped upstream target after the existing
+  provider-prefix normalization. Reject known image/audio/realtime/embedding/
+  video/transcription/TTS/moderation families, including
+  `gpt-4o(-mini)-transcribe`, `gpt-4o-mini-tts`, `omni-moderation-*` and
+  `text-moderation-*`, before upstream dispatch. Preserve custom API-key text
+  aliases; do not replace this boundary with a GPT-only allowlist.
+- OAuth Pelican requests resolve credentials through the injected gateway/token
+  provider so cached or refreshed credentials supersede snapshot tokens. Keep
+  Agent Identity per-request signing and ordinary connectivity behavior.
+  `isPelicanProbe(ctx)` must guard provider behavior as well as caller health
+  handlers: expired/missing-refresh and refresh failure/cancellation must not
+  disable an account or fall back to known expired credentials, including lock
+  contention or unavailable refresh-service paths. Validate expiry again after
+  adopting a higher-version repository account, since that object may itself
+  be expired; preserve personal access token expiry semantics. Normal forwarding retains
+  its existing missing-refresh and refresh-failure policies.
+- Successful authentication renewal may persist credentials, `_token_version`,
+  token cache and related scheduler snapshot/outbox. These lifecycle writes do
+  not authorize health/error/401/429, extra/quota, group, schedulability or
+  isolation writes from a probe.
 - Pelican probes do not write probe extras, permanent authentication errors,
   or rate-limit reconciliation. Ordinary `/test` probes retain their default
   question and state handling. Authentication credential/task lifecycle and
@@ -130,6 +150,9 @@ their runner continues to own explicit judge/isolation/restore actions.
 | Unsupported provider or media model in manual mode | Explicit error, no fallback connectivity question |
 | OpenAI OAuth / API-key Responses / Chat Completions | Requested prompt and effort reach the actual transport |
 | Probe success, 401, 429, transport failure or cancellation | No probe-induced health or scheduling mutation |
+| OAuth snapshot stale but cache/refresh has a newer token | Dispatch using the current resolved token |
+| Expired OAuth token without refresh, failed/cancelled refresh or expired fallback | Fail without stale dispatch or health/runtime/cache-deletion side effects |
+| Known non-text mapped/provider-qualified model | Reject before upstream dispatch; custom text names remain supported |
 | Missing terminal SSE success or empty output | Client reports incomplete/empty result |
 | Explicit scheduled judge failure | Existing runner lease/action/audit contract still applies |
 
@@ -147,7 +170,10 @@ their runner continues to own explicit judge/isolation/restore actions.
 Capture outgoing requests through the service/handler for OAuth Responses,
 API-key Responses and Chat Completions. Assert actual prompt/effort, ordinary
 probe compatibility, input rejection, cancellation and success/401/429
-non-mutation. Run `go test -p 2 -tags=unit ./internal/service
+non-mutation. Cover cached tokens, refresh persistence, missing-refresh,
+failure/cancellation/lock contention and preserved normal provider behavior;
+assert no forbidden health writes and zero upstream requests on unsupported
+mapped/provider-qualified models. Run `go test -p 1 -tags=unit ./internal/service
 ./internal/handler/admin -run 'ManualPelican|PelicanTransport|ScheduledPelicanActual|PelicanHandler|PelicanPayloads' -count=1`.
 
 `openai_outbound_branding_test.go` additionally checks actual HTTP forwarding
@@ -161,3 +187,9 @@ Wrong: store a prompt in context but always call
 Correct: consume Pelican context in that sending path and call
 `createPelicanOpenAIPayload(model, isOAuth, options.prompt,
 options.reasoningEffort)`, while leaving ordinary probes unchanged.
+
+Wrong: read only the account snapshot token, or reuse the normal provider
+without guarding its permanent-error and stale-token fallback paths.
+
+Correct: resolve through the existing provider with Pelican observation context;
+permit credential renewal but reject invalid credentials without health writes.

@@ -241,3 +241,46 @@ func TestScheduledPelicanActualTransportHonorsOptionsWithoutHealthWrites(t *test
 	require.Equal(t, "high", gjson.GetBytes(body, "reasoning.effort").String())
 	assertPelicanObservation(t, a, repo)
 }
+
+func TestManualPelicanRejectsKnownNonTextModelTargetsBeforeDispatch(t *testing.T) {
+	for _, target := range []string{
+		"gpt-4o-transcribe", "gpt-4o-mini-transcribe", "gpt-4o-mini-transcribe-2025-12-15",
+		"gpt-4o-mini-tts", "gpt-4o-mini-tts-2025-12-15", "omni-moderation-latest", "text-moderation-stable",
+		"openai/gpt-image-2", "openai/gpt-4o-transcribe", "models/gpt-4o-mini-tts", "provider/omni-moderation-latest",
+		"openai/gpt-audio", "openai/gpt-realtime", "openai/text-embedding-3-small", "openai/whisper-1", "openai/sora-2",
+	} {
+		for _, mapped := range []bool{false, true} {
+			t.Run(target+map[bool]string{true: "/mapped", false: "/direct"}[mapped], func(t *testing.T) {
+				a := manualPelicanAccount(AccountTypeAPIKey, false)
+				requested := target
+				if mapped {
+					a.Credentials["model_mapping"] = map[string]any{"comparison": target}
+					requested = "comparison"
+				}
+				svc, repo, upstream := manualPelicanService(a)
+				ctx, rec := newTestContext()
+				require.Error(t, svc.TestManualPelicanAccountConnection(ctx, 1, requested, "Question", "medium"))
+				require.Contains(t, rec.Body.String(), "requires a text model")
+				require.Empty(t, upstream.requests)
+				assertPelicanObservation(t, a, repo)
+			})
+		}
+	}
+}
+
+func TestManualPelicanAcceptsCustomTextAliases(t *testing.T) {
+	for _, target := range []string{"custom-text-model", "image-analysis-text", "my-transcribe-analysis", "provider/custom-text-model", "openai/gpt-5.4"} {
+		t.Run(target, func(t *testing.T) {
+			a := manualPelicanAccount(AccountTypeAPIKey, false)
+			a.Credentials["model_mapping"] = map[string]any{"comparison": target}
+			svc, repo, upstream := manualPelicanService(a, newJSONResponse(http.StatusOK, "data: {\"type\":\"response.completed\"}\n\n"))
+			ctx, _ := newTestContext()
+			require.NoError(t, svc.TestManualPelicanAccountConnection(ctx, 1, "comparison", "Question", "medium"))
+			require.Len(t, upstream.requests, 1)
+			body, err := io.ReadAll(upstream.requests[0].Body)
+			require.NoError(t, err)
+			require.Equal(t, target, gjson.GetBytes(body, "model").String())
+			assertPelicanObservation(t, a, repo)
+		})
+	}
+}

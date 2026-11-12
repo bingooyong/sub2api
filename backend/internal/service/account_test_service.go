@@ -862,7 +862,18 @@ func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account
 		isOAuth = true
 		// Agent Identity signs each request and does not retain the OAuth token.
 		if !credentialAccount.IsOpenAIAgentIdentity() {
-			authToken = credentialAccount.GetOpenAIAccessToken()
+			if isPelicanProbe(ctx) && s.openaiGatewayService != nil {
+				// Observational probes share forwarding's credential cache and
+				// refresh lifecycle, with probe-specific provider safeguards.
+				resolvedToken, _, err := s.openaiGatewayService.GetAccessToken(ctx, credentialAccount)
+				if err != nil {
+					return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to resolve access token: %v", err))
+				}
+				authToken = resolvedToken
+			} else {
+				// Retain ordinary connectivity and dependency-free test callers.
+				authToken = credentialAccount.GetOpenAIAccessToken()
+			}
 		}
 		if authToken == "" && !credentialAccount.IsOpenAIAgentIdentity() {
 			return s.sendErrorAndEnd(c, "No access token available")

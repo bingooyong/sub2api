@@ -1,5 +1,6 @@
 import { ADMIN_UI_REQUEST_HEADER } from '../adminUIRequest'
 import { buildApiUrl } from '../url'
+import { refreshAuthTokens } from '../tokenRefresh'
 
 export interface ManualQualityRequest {
   model_id: string
@@ -10,9 +11,25 @@ export interface ManualQualityRequest {
 export type ManualQualityErrorCode = 'http' | 'noBody' | 'invalidStream' | 'incomplete' | 'empty' | 'failed'
 
 export class ManualQualityError extends Error {
-  constructor(public readonly code: ManualQualityErrorCode, message = '') {
+  constructor(
+    public readonly code: ManualQualityErrorCode,
+    message = '',
+    public readonly status?: number,
+    public readonly apiCode?: string,
+    public readonly metadata?: unknown
+  ) {
     super(message)
   }
+}
+
+/** Cancelling a probe must not cancel a refresh shared with other requests. */
+function waitForRefresh<T>(pending: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(new DOMException('Aborted', 'AbortError'))
+    signal.addEventListener('abort', abort, { once: true })
+    if (signal.aborted) abort()
+    void pending.then(resolve, reject).finally(() => signal.removeEventListener('abort', abort))
+  })
 }
 
 /** Owns the account-test SSE contract; callers receive text and a terminal result. */
@@ -22,27 +39,54 @@ export async function runManualQualityProbe(
   signal: AbortSignal,
   onText: (text: string) => void
 ): Promise<void> {
+  signal.throwIfAborted()
   const token = localStorage.getItem('auth_token')
-  const response = await fetch(buildApiUrl(`/admin/accounts/${accountID}/pelican-test`), {
+  const sessionUser = localStorage.getItem('auth_user')
+  const body = JSON.stringify(request)
+  const send = (accessToken: string | null) => fetch(buildApiUrl(`/admin/accounts/${accountID}/pelican-test`), {
     method: 'POST',
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       [ADMIN_UI_REQUEST_HEADER]: '1',
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
     },
-    body: JSON.stringify(request),
+    body,
     signal
   })
+  let response = await send(token)
+  signal.throwIfAborted()
+  if (response.status === 401 && localStorage.getItem('refresh_token') &&
+      localStorage.getItem('auth_token') && localStorage.getItem('auth_user') === sessionUser) {
+    await response.body?.cancel()
+    signal.throwIfAborted()
+    const tokens = await waitForRefresh(refreshAuthTokens({ failedAccessToken: token }), signal)
+    signal.throwIfAborted()
+    // A request from an older session must not be replayed as another user.
+    if (localStorage.getItem('auth_user') !== sessionUser ||
+        localStorage.getItem('auth_token') !== tokens.access_token ||
+        localStorage.getItem('refresh_token') !== tokens.refresh_token) {
+      throw new ManualQualityError('http', 'Session changed during token refresh', 401)
+    }
+    response = await send(tokens.access_token)
+    signal.throwIfAborted()
+  }
   if (!response.ok) {
     let message = `HTTP ${response.status}`
+    let apiCode: string | undefined
+    let metadata: unknown
     try {
-      const body: unknown = await response.json()
-      if (body && typeof body === 'object' && 'message' in body && typeof body.message === 'string') {
-        message += `: ${body.message}`
+      const errorBody: unknown = await response.json()
+      if (errorBody && typeof errorBody === 'object') {
+        if ('message' in errorBody && typeof errorBody.message === 'string') message += `: ${errorBody.message}`
+        if ('code' in errorBody && typeof errorBody.code === 'string') apiCode = errorBody.code
+        if ('metadata' in errorBody) metadata = errorBody.metadata
       }
     } catch { /* Keep the HTTP status for non-JSON proxy errors. */ }
-    throw new ManualQualityError('http', message)
+    if (response.status === 423 && apiCode === 'ADMIN_COMPLIANCE_ACK_REQUIRED') {
+      window.dispatchEvent(new CustomEvent('admin-compliance-required', { detail: metadata || {} }))
+    }
+    throw new ManualQualityError('http', message, response.status, apiCode, metadata)
   }
   const reader = response.body?.getReader()
   if (!reader) throw new ManualQualityError('noBody')

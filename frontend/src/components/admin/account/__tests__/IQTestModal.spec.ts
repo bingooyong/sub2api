@@ -90,6 +90,8 @@ describe('IQTestModal', () => {
 
     const frames = wrapper.findAll('iframe')
     expect(frames).toHaveLength(2)
+    expect(frames[0].attributes('sandbox')).toBe('')
+    expect(frames[0].attributes('srcdoc')).not.toContain('<script')
     expect(frames[0].attributes('srcdoc')).toContain('Content-Security-Policy')
     expect(frames[0].attributes('srcdoc')).toContain('<svg></svg>')
     expect(wrapper.text()).toContain('admin.accounts.pelicanTest.success')

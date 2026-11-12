@@ -120,6 +120,7 @@
           {{ t('admin.accounts.pelicanTest.emptyResults') }}
         </div>
         <div v-else class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <p class="text-sm text-gray-500 xl:col-span-2">{{ t('qualityOps.manual.previewHelp') }}</p>
           <article v-for="(run, index) in runs" :key="run.id" class="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-dark-600 dark:bg-dark-800">
             <header class="flex items-center justify-between gap-2 border-b border-gray-200 px-3 py-2 dark:border-dark-600">
               <div class="flex items-center gap-2">
@@ -141,7 +142,7 @@
               <div>{{ t('admin.accounts.pelicanTest.duration') }}：{{ run.durationMs == null ? '—' : `${(run.durationMs / 1000).toFixed(1)} s` }}</div>
             </div>
             <div v-if="run.html" class="aspect-[4/3] bg-white dark:bg-white">
-              <iframe :srcdoc="run.html" class="h-full w-full border-0" sandbox="allow-scripts" referrerpolicy="no-referrer" :title="`${t('admin.accounts.pelicanTest.output')} ${index + 1}`"></iframe>
+              <iframe :srcdoc="run.html" class="h-full w-full border-0" sandbox="" referrerpolicy="no-referrer" :title="`${t('admin.accounts.pelicanTest.output')} ${index + 1}`"></iframe>
             </div>
             <pre class="max-h-48 overflow-auto whitespace-pre-wrap break-words border-t border-gray-200 bg-gray-950 p-3 text-xs leading-relaxed text-gray-200 dark:border-dark-600">{{ run.output || run.error || t('admin.accounts.pelicanTest.waiting') }}</pre>
           </article>

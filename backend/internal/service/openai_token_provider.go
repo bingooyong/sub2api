@@ -140,6 +140,10 @@ func (p *OpenAITokenProvider) GetAccessToken(ctx context.Context, account *Accou
 		return "", errors.New("not an openai oauth account")
 	}
 
+	probe := isPelicanProbe(ctx)
+	if probe && ctx.Err() != nil {
+		return "", ctx.Err()
+	}
 	cacheKey := OpenAITokenCacheKey(account)
 
 	// 1) Try cache first.
@@ -162,7 +166,9 @@ func (p *OpenAITokenProvider) GetAccessToken(ctx context.Context, account *Accou
 			const reason = "openai access_token expired and refresh_token is missing"
 			// 永久故障：缺失 refresh_token 时账号无法自愈，必须立即从调度池剔除，
 			// 否则会被反复选中、每次都在 token 阶段直接返回错误，对用户呈现持续 502。
-			p.disableAccountMissingRefreshToken(account, reason)
+			if !probe {
+				p.disableAccountMissingRefreshToken(account, reason)
+			}
 			return "", errors.New(reason)
 		}
 		needsRefresh = false
@@ -175,7 +181,7 @@ func (p *OpenAITokenProvider) GetAccessToken(ctx context.Context, account *Accou
 
 		result, err := p.refreshAPI.RefreshIfNeeded(ctx, account, p.executor, openAITokenRefreshSkew)
 		if err != nil {
-			if p.refreshPolicy.OnRefreshError == ProviderRefreshErrorReturn {
+			if probe || p.refreshPolicy.OnRefreshError == ProviderRefreshErrorReturn {
 				return "", err
 			}
 			slog.Warn("openai_token_refresh_failed", "account_id", account.ID, "error", err)
@@ -227,6 +233,17 @@ func (p *OpenAITokenProvider) GetAccessToken(ctx context.Context, account *Accou
 		}
 	}
 
+	if probe {
+		if err := ctx.Err(); err != nil {
+			return "", err
+		}
+		// A lock race, unavailable refresh wiring, or an unchanged refresh
+		// result must never turn an expired snapshot into a probe request.
+		if !account.IsOpenAIPersonalAccessToken() && expiresAt != nil && !time.Now().Before(*expiresAt) {
+			return "", errors.New("openai access_token expired without a successful refresh")
+		}
+	}
+
 	accessToken := account.GetCredential("access_token")
 	if strings.TrimSpace(accessToken) == "" {
 		return "", errors.New("access_token not found in credentials")
@@ -237,6 +254,11 @@ func (p *OpenAITokenProvider) GetAccessToken(ctx context.Context, account *Accou
 		latestAccount, isStale := CheckTokenVersion(ctx, account, p.accountRepo)
 		if isStale && latestAccount != nil {
 			slog.Debug("openai_token_version_stale_use_latest", "account_id", account.ID)
+			if probe && !latestAccount.IsOpenAIPersonalAccessToken() {
+				if latestExpiry := latestAccount.GetCredentialAsTime("expires_at"); latestExpiry != nil && !time.Now().Before(*latestExpiry) {
+					return "", errors.New("openai access_token expired after version check")
+				}
+			}
 			accessToken = latestAccount.GetOpenAIAccessToken()
 			if strings.TrimSpace(accessToken) == "" {
 				return "", errors.New("access_token not found after version check")

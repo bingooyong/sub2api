@@ -51,6 +51,7 @@
     </form>
     <div v-if="runs.length" class="border-t bg-gray-50/50 p-5 dark:border-dark-600 dark:bg-dark-900/30">
       <p class="mb-4 text-sm text-gray-500">{{ t('qualityOps.manual.compareHelp') }}</p>
+      <p class="text-sm text-gray-500">{{ t('qualityOps.manual.previewHelp') }}</p>
       <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         <article v-for="run in runs" :key="run.accountId" class="min-w-0 overflow-hidden rounded-xl border bg-white dark:border-dark-600 dark:bg-dark-800" data-testid="manual-result" :data-status="run.status">
           <div class="border-b px-4 py-3 dark:border-dark-600">
@@ -63,7 +64,7 @@
               <span class="text-gray-500">{{ duration(run) }} s</span>
             </div>
             <div v-if="run.html" class="aspect-[4/3] overflow-hidden rounded-lg border bg-white dark:border-dark-600">
-              <iframe :srcdoc="run.html" sandbox="allow-scripts" referrerpolicy="no-referrer" class="h-full w-full border-0" :title="t('qualityOps.manual.preview', { account: run.accountName })" />
+              <iframe :srcdoc="run.html" sandbox="" referrerpolicy="no-referrer" class="h-full w-full border-0" :title="t('qualityOps.manual.preview', { account: run.accountName })" />
             </div>
             <p v-if="run.error" class="mb-2 whitespace-pre-wrap break-words text-sm text-red-600" role="alert">{{ run.error }}</p>
             <p v-if="run.status === 'success' && run.question === 'pelican' && !run.html" class="mb-2 text-sm text-amber-600">{{ t('qualityOps.manual.noPreview') }}</p>

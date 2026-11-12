@@ -5,6 +5,7 @@
         <div>
           <h2 class="text-xl font-semibold">{{ t('admin.accounts.pelicanTest.history') }}</h2>
           <p class="text-sm text-gray-500">{{ t('admin.accounts.pelicanTest.dashboardHint') }}</p>
+          <p class="text-sm text-gray-500">{{ t('qualityOps.manual.previewHelp') }}</p>
         </div>
         <button type="button" class="btn btn-secondary" @click="emit('close')">{{ t('common.close') }}</button>
       </header>
@@ -17,9 +18,13 @@
             <p class="mt-1 text-xs text-gray-500">#{{ card.accountId }} · {{ formatDate(card.startedAt) }}</p>
             <span :class="card.status === 'success' ? 'text-emerald-600' : 'text-red-500'">{{ t(card.status === 'success' ? 'admin.accounts.pelicanTest.success' : 'admin.accounts.pelicanTest.failed') }}</span>
             <div class="mt-3 aspect-[4/3] overflow-auto rounded bg-gray-50 dark:bg-dark-900">
-              <iframe v-if="card.html" :srcdoc="card.html" class="h-full w-full border-0" sandbox="allow-scripts" referrerpolicy="no-referrer" :title="card.accountName" />
+              <iframe v-if="card.html" :srcdoc="card.html" class="h-full w-full border-0" sandbox="" referrerpolicy="no-referrer" :title="card.accountName" />
               <pre v-else class="whitespace-pre-wrap break-words p-3 text-xs">{{ card.output || card.error || '—' }}</pre>
             </div>
+            <details v-if="card.html" class="mt-3">
+              <summary class="cursor-pointer text-sm text-gray-500">{{ t('qualityOps.manual.raw') }}</summary>
+              <pre class="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words text-xs">{{ card.output }}</pre>
+            </details>
           </div>
         </article>
       </div>

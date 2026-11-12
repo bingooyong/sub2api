@@ -102,6 +102,7 @@ export default {
     "stop": "终止",
     "progress": "已结束 {completed} / {total}",
     "compareHelp": "对比不同账号的画面、细节和回答。“已完成”表示收到回答，不代表账号智力正常。结果保留在当前页面，直到开始新一批检测。",
+    "previewHelp": "预览支持 SVG、内嵌样式与 CSS 动画，不加载外部资源或执行生成的 JavaScript。脚本驱动的画面请查看回答原文。",
     "preview": "{account} 的生成结果",
     "raw": "回答原文",
     "noPreview": "未获得可预览的 HTML/SVG，请查看回答原文。",

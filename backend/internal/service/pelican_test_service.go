@@ -73,10 +73,10 @@ func isPelicanProbe(ctx context.Context) bool {
 }
 
 func isPelicanTextModel(model string) bool {
-	model = strings.ToLower(strings.TrimSpace(model))
+	model = strings.ToLower(codexProviderQualifiedModelID(model))
 	// Inspect mapped provider model families, not arbitrary substrings in a
 	// user-defined model name (for example, an image-analysis text model).
-	for _, prefix := range []string{"gpt-image-", "dall-e-", "gpt-audio", "gpt-4o-audio", "gpt-4o-mini-audio", "gpt-realtime", "gpt-4o-realtime", "gpt-4o-mini-realtime", "text-embedding-", "tts-", "whisper-", "sora-"} {
+	for _, prefix := range []string{"gpt-image-", "dall-e-", "gpt-audio", "gpt-4o-audio", "gpt-4o-mini-audio", "gpt-realtime", "gpt-4o-realtime", "gpt-4o-mini-realtime", "gpt-4o-transcribe", "gpt-4o-mini-transcribe", "gpt-4o-mini-tts", "text-embedding-", "omni-moderation-", "text-moderation-", "tts-", "whisper-", "sora-"} {
 		if strings.HasPrefix(model, prefix) {
 			return false
 		}

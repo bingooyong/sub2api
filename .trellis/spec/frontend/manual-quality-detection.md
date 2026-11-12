@@ -30,10 +30,35 @@ so completed results remain available after reopening.
 - Stop/close/unmount abort active requests, cancel queued work and advance a
   batch generation so late callbacks cannot update a newer run. Completed
   cards survive Stop; a new batch replaces the previous cards.
-- Preview with `extractPelicanHtml`, an opaque-origin iframe
-  `sandbox="allow-scripts"`, and `referrerpolicy="no-referrer"`. Never add
-  `allow-same-origin`. The generated document must place the deny-network CSP
-  before executable/user markup, including malformed model-produced heads.
+- Preview with `extractPelicanHtml`, an opaque-origin iframe `sandbox=""`,
+  and `referrerpolicy="no-referrer"` in ManualQualityPanel, IQTestModal and
+  PelicanRecordsDashboard. Never add script or same-origin permissions.
+  Reuse DOMPurify for passive HTML/SVG normalization: remove scripts/event
+  handlers, meta refresh, navigation URLs, base/link/resource hints, nested
+  browsing contexts and forms. Preserve ordinary artwork, styles, CSS
+  animation, safe visual SVG animations and internal artwork references.
+  Reject externally loading or obfuscated CSS resources and external resource
+  attributes before assigning srcdoc; keep plain styles/keyframes and fragment
+  references. A final CSP alone proved insufficient to guarantee zero requests
+  for a generated CSS background fixture in Chromium. Raw output preserves
+  externally dependent styles and generated JavaScript for inspection; scripts
+  are never executed.
+- Install the trusted CSP before model markup, with `script-src 'none'`,
+  denied subresource/network access and no forms/frames/objects. CSP
+  `default-src`/`connect-src` does not prevent document navigation: remove
+  navigation constructs as well. Do not rely on unsupported `navigate-to`.
+- Before opening a manual SSE stream, an HTTP401 may trigger one retry through
+  the existing `refreshAuthTokens({ failedAccessToken })` coordinator. Preserve
+  body/admin headers; abort promptly while awaiting refresh without cancelling
+  other callers' refresh. Do not replay across logout/session replacement or
+  retry upstream SSE errors. Never add another refresh implementation.
+- HTTP423 plus `ADMIN_COMPLIANCE_ACK_REQUIRED` dispatches the existing
+  `admin-compliance-required` event with metadata, preserves the HTTP/API error
+  information, and is not retried automatically. The existing App/store owns
+  the confirmation dialog.
+- The opener exposes `aria-expanded`/`aria-controls` linked to a stable panel
+  ID. Opening moves focus into the panel after rendering; closing restores
+  opener focus while retaining completed results and cancelling pending work.
 - Show token/quota values only if supplied by a real upstream usage contract.
   Current manual SSE has no usage contract; do not invent screenshot counters.
 
@@ -47,7 +72,11 @@ so completed results remain available after reopening.
 | Plain text returned for bicycle question | Show raw answer and missing-preview hint |
 | Stop while active/queued | Unfinished cards cancelled; completed cards retained |
 | Terminal success but empty output / truncated stream | Error card |
-| Close and reopen panel | Requests stopped; existing cards remain |
+| Close and reopen panel | Requests stopped; existing cards remain; focus returns to opener |
+| Refreshable administrator HTTP401 before SSE | Shared refresh, at most one retry |
+| Abort/logout/session replacement during refresh | No stale replay; shared refresh remains available to other callers |
+| HTTP423 compliance requirement | Dispatch confirmation event with metadata, retain error, no automatic retry |
+| Generated scripts/meta refresh/HTML or SVG links | Passive preview, no execution/navigation/network requests |
 
 ## 5. Good / Base / Bad Cases
 
@@ -56,7 +85,8 @@ so completed results remain available after reopening.
 - Base: 401/unsupported-model errors are visible per account and are not
   labelled as an intelligence failure.
 - Bad: equating valid HTML with intelligence passing, leaving aborted cards
-  running, or allowing a pre-head script to execute before the preview CSP.
+  running, or treating a fetch-blocking CSP as protection against iframe
+  navigation.
 
 ## 6. Tests Required
 
@@ -64,9 +94,14 @@ so completed results remain available after reopening.
 src/components/admin/account/__tests__/ManualQualityPanel.spec.ts` covers
 split Unicode chunks, SSE failures, queue bounds, immutable batch settings,
 pagination selection, Stop/stale callbacks, close/unmount and preview policy.
-Include preview helper regression tests when changing document normalization.
-Run lint, typecheck, locale completeness and the production build. Browser
-smoke should exercise desktop/mobile cards and cancellation using mock
+Include `pelicanHtml.spec.ts`, `admin.manualQuality.spec.ts`, and
+`AccountQualityView.manual.spec.ts` for passive normalization, 401 concurrent
+refresh/retry/cancellation/session cases, 423 metadata/error/no-retry handling,
+and disclosure/focus. Run lint, typecheck, locale completeness and production
+build. Chromium must exercise meta/script/HTML/SVG navigation and CSS artwork
+under the actual backend parent CSP, observing requests and frame URLs rather
+than only normalized strings. UI smoke covers desktop/mobile cards,
+cancellation/reopen, focus, refresh and the compliance dialog using mock
 responses; live model quality must not be claimed from fixture responses.
 
 ## 7. Wrong vs Correct
@@ -75,3 +110,9 @@ Wrong: `await Promise.all(selected.map(account => fetchProbe(account)))`.
 
 Correct: freeze the request once, use a bounded worker queue, pass an
 AbortSignal per active request, and guard all callbacks with its batch ID.
+
+Wrong: permit inline scripts and assume `connect-src 'none'` prevents a
+preview's meta refresh or clicked SVG link from navigating.
+
+Correct: sanitize into a passive document before srcdoc assignment, remove
+navigation constructs, use an empty sandbox and disable scripts in CSP.

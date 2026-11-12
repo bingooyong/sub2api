@@ -1,0 +1,20 @@
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend quality and preservation contracts"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Full lint evidence and regression scope"}
+{"file": ".trellis/spec/backend/account-quality-operations.md", "reason": "Manual observation and scheduled mutation boundaries"}
+{"file": ".trellis/spec/backend/codex-forwarding.md", "reason": "HTTP/WS identity and tool correlation"}
+{"file": ".trellis/spec/backend/codex-identity-customization.md", "reason": "Fingerprint and identity preservation"}
+{"file": ".trellis/spec/backend/database-guidelines.md", "reason": "Published schema and migration compatibility"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend conventions"}
+{"file": ".trellis/spec/frontend/manual-quality-detection.md", "reason": "Queue, cancellation, SSE and preview contracts"}
+{"file": ".trellis/spec/frontend/build-toolchain.md", "reason": "Final-source build and override parity"}
+{"file": ".trellis/tasks/archive/2026-11/11-12-upgrade-v0221-manual-quality/research/validation.md", "reason": "Prior validation evidence and limits"}
+{"file": ".trellis/tasks/11-12-review-v0221-manual-quality/research/frontend-review.md", "reason": "Confirmed repair findings and preservation/browser evidence"}
+{"file": ".trellis/tasks/11-12-review-v0221-manual-quality/research/backend-review.md", "reason": "Confirmed repair findings and preservation/browser evidence"}
+{"file": ".trellis/tasks/11-12-review-v0221-manual-quality/research/upgrade-review.md", "reason": "Confirmed repair findings and preservation/browser evidence"}
+{"file": ".trellis/tasks/11-12-review-v0221-manual-quality/research/csp-browser.md", "reason": "Confirmed repair findings and preservation/browser evidence"}
+{"file": ".trellis/tasks/11-12-review-v0221-manual-quality/research/browser-validation.md", "reason": "Fresh production-CSP Chromium repair evidence and diagnostic limits"}
+{"file": ".trellis/tasks/11-12-review-v0221-manual-quality/research/frontend-implementation.md", "reason": "Final frontend changes and validation chronology"}
+{"file": ".trellis/tasks/11-12-review-v0221-manual-quality/research/backend-implementation.md", "reason": "Final backend token/model repairs and bounded validation"}
+{"file": ".trellis/tasks/11-12-review-v0221-manual-quality/research/preservation.md", "reason": "Fresh identity and upstream/migration/dependency preservation evidence"}
+{"file": ".trellis/tasks/11-12-review-v0221-manual-quality/research/repair-check.md", "reason": "Independent integrated repair review and closed followups"}
+{"file": ".trellis/tasks/11-12-review-v0221-manual-quality/research/validation.md", "reason": "Final verification commands, results and explicit coverage limits"}
