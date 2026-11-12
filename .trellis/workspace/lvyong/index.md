@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 16
+- **Total Sessions**: 17
 - **Last Active**: 2026-11-12
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~527 | Active |
+| `journal-1.md` | ~564 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 17 | 2026-11-12 | 更新 160 到 0.2.21-hotfix1（合并上游 v0.2.19/20/21） | - | `v0.2.21-hotfix1` |
 | 16 | 2026-11-12 | Review and repair v0.2.21 manual quality detection | `c58eab184` | `v0.2.21-hotfix1` |
 | 15 | 2026-11-12 | Upgrade v0.2.21 and manual quality detection | `81231fa12`, `61dbfc2b4`, `6d96a1ee8`, `f5109cf14` | `v0.2.21-hotfix1` |
 | 14 | 2026-10-23 | 密文失效自愈上线 + session_hash 诊断增强（23efd173b） | - | `dev` |

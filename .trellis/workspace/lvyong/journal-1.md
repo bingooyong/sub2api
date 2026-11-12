@@ -525,3 +525,40 @@ Repaired six review findings and two independent followups; preserved fingerprin
 ### Status
 
 [OK] **Completed**
+
+
+## Session 17: 更新 160 到 0.2.21-hotfix1（合并上游 v0.2.19/20/21）
+
+**Date**: 2026-11-12
+**Task**: 更新 160 到 0.2.21-hotfix1（合并上游 v0.2.19/20/21）
+**Branch**: `v0.2.21-hotfix1`
+
+### Summary
+
+本地 v0.2.21-hotfix1 构建发布到 160，迁移 301→306，停服 122 秒，业务表 8 张逐项一致
+
+### Main Changes
+
+- 上游 v0.2.19/20/21 合并 + 定制修复，产物修订 c9677aee4，镜像 ID eeb37ef6edaa
+- 5 条新迁移全部为 CREATE TABLE / ADD COLUMN / CREATE INDEX CONCURRENTLY，无 DROP/RENAME/DELETE → 回滚无需逆向迁移
+- 隔离演练改用 schema-only 恢复 + 迁移账本恢复（生产库 1447MB，160 磁盘放不下全量恢复）
+- 演练脚本补：health 失败即非零退出、PG 未就绪时打印容器日志与磁盘
+- 分支已推送 origin/v0.2.21-hotfix1
+
+### Git Commits
+
+(No commits - planning session)
+
+### Testing
+
+- [OK] 演练：migrations 301→306、5 条新迁移逐条在库、新表/列/索引全部创建、health ok
+- [OK] 切换后：停服 122 秒、版本接口 0.2.21-hotfix1、三个 health ok、UI index-CuuCm_D7.js 200、/v1/models 23 个模型
+- [OK] schema_migrations 仅新增 5 条且同名 checksum 未变；8 张业务表 inventory 逐项一致；日志 error/fatal/panic 为 0
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 重建被误删的上一版镜像 0.2.18-hotfix1-23efd173b 以补齐回滚点（后台进行中）
