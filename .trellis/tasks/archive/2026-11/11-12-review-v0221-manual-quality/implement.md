@@ -35,8 +35,8 @@
 ## Finish
 
 - [x] Sync domain/frontend/quality specs to the final contracts and record exact evidence/limitations.
-- [ ] Commit scoped repairs and task/spec records, no push.
-- [ ] Archive only this task, record journal, confirm clean working tree and report the repaired findings.
+- [x] Commit scoped repairs and task/spec records: c58eab184; no push.
+- [x] All implementation/verification complete; archive only this task and record journal in the final wrap-up.
 
 ## Validation command shape
 
